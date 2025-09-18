@@ -57,21 +57,42 @@ class _ChatPageState extends State<ChatPage> {
       "direccion": "Cra 45 # 10-23, Medellín",
       "precio": "\$1.200.000 COP",
       "descripcion": "Hermoso apartamento de 2 habitaciones, 2 baños, parqueadero y balcón.",
-      "imagen": "assets/inmueble1.jpg",
+      "imagenes": [
+        "https://images.unsplash.com/photo-1506744038136-46273834b3fb",
+        "https://images.unsplash.com/photo-1460518451285-97b6aa326961",
+      ],
+      "area": 80,
+      "terreno": 0,
+      "habitaciones": 2,
+      "banos": 2,
     },
     {
       "titulo": "Casa en Envigado",
       "direccion": "Calle 12 Sur # 34-56, Envigado",
       "precio": "\$2.500.000 COP",
       "descripcion": "Casa amplia con jardín y garaje doble.",
-      "imagen": "assets/inmueble2.jpg",
+      "imagenes": [
+        "https://images.unsplash.com/photo-1460518451285-97b6aa326961",
+        "https://images.unsplash.com/photo-1512918728675-ed5a9ecdebfd",
+      ],
+      "area": 200,
+      "terreno": 300,
+      "habitaciones": 4,
+      "banos": 3,
     },
     {
       "titulo": "Estudio en Laureles",
       "direccion": "Av. Nutibara # 70-80, Laureles",
       "precio": "\$900.000 COP",
       "descripcion": "Estudio moderno, excelente ubicación.",
-      "imagen": "assets/inmueble3.jpg",
+      "imagenes": [
+        "https://images.unsplash.com/photo-1512918728675-ed5a9ecdebfd",
+        "https://images.unsplash.com/photo-1506744038136-46273834b3fb",
+      ],
+      "area": 40,
+      "terreno": 0,
+      "habitaciones": 1,
+      "banos": 1,
     },
   ];
 
@@ -79,11 +100,12 @@ class _ChatPageState extends State<ChatPage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFF18181B), // Fondo oscuro
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
+        final imagenes = List<String>.from(inmueble["imagenes"] ?? []);
         return Padding(
           padding: const EdgeInsets.all(24.0),
           child: SingleChildScrollView(
@@ -97,33 +119,40 @@ class _ChatPageState extends State<ChatPage> {
                     height: 5,
                     margin: const EdgeInsets.only(bottom: 16),
                     decoration: BoxDecoration(
-                      color: Colors.grey[300],
+                      color: Colors.grey[700],
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
                 ),
-                inmueble["imagen"] != null
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.asset(
-                          inmueble["imagen"],
-                          height: 140,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                        ),
-                      )
-                    : const SizedBox.shrink(),
+                if (imagenes.isNotEmpty)
+                  SizedBox(
+                    height: 200,
+                    child: PageView.builder(
+                      itemCount: imagenes.length,
+                      itemBuilder: (context, index) {
+                        return ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.network(
+                            imagenes[index],
+                            height: 200,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
                 const SizedBox(height: 16),
                 Text(
-                  inmueble["titulo"],
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  inmueble["titulo"] ?? "",
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
                 const SizedBox(height: 8),
-                Text(inmueble["direccion"], style: const TextStyle(fontSize: 16)),
+                Text(inmueble["direccion"] ?? "", style: const TextStyle(fontSize: 16, color: Colors.white70)),
                 const SizedBox(height: 8),
-                Text(inmueble["precio"], style: const TextStyle(fontSize: 16, color: Colors.green)),
+                Text(inmueble["precio"] ?? "", style: const TextStyle(fontSize: 16, color: Colors.greenAccent)),
                 const SizedBox(height: 12),
-                Text(inmueble["descripcion"], style: const TextStyle(fontSize: 15)),
+                Text(inmueble["descripcion"] ?? "", style: const TextStyle(fontSize: 15, color: Colors.white70)),
               ],
             ),
           ),
@@ -136,96 +165,133 @@ class _ChatPageState extends State<ChatPage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.transparent,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
-        return DefaultTabController(
-          length: 2,
-          child: SizedBox(
-            height: MediaQuery.of(context).size.height * 0.65,
-            child: Column(
-              children: [
-                const SizedBox(height: 12),
-                Container(
-                  width: 40,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(10),
+        final theme = Theme.of(context);
+        return Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFF18181B), // Fondo oscuro
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: DefaultTabController(
+            length: 2,
+            child: SizedBox(
+              height: MediaQuery.of(context).size.height * 0.65,
+              child: Column(
+                children: [
+                  const SizedBox(height: 12),
+                  Container(
+                    width: 40,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[700],
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                const TabBar(
-                  labelColor: Color(0xFF6B8796),
-                  unselectedLabelColor: Colors.grey,
-                  indicatorColor: Color(0xFF6B8796),
-                  tabs: [
-                    Tab(text: "Perfil"),
-                    Tab(text: "Inmueble"),
-                  ],
-                ),
-                Expanded(
-                  child: TabBarView(
-                    children: [
-                      // Perfil
-                      Padding(
-                        padding: const EdgeInsets.all(24.0),
-                        child: Column(
-                          children: [
-                            CircleAvatar(
-                              backgroundImage: AssetImage(perfil["avatar"]),
-                              radius: 40,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              perfil["nombre"],
-                              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(perfil["email"], style: const TextStyle(fontSize: 16)),
-                            const SizedBox(height: 8),
-                            Text(perfil["telefono"], style: const TextStyle(fontSize: 16)),
-                          ],
-                        ),
-                      ),
-                      // Lista de inmuebles
-                      ListView.separated(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: inmuebles.length,
-                        separatorBuilder: (_, __) => const Divider(),
-                        itemBuilder: (context, index) {
-                          final inmueble = inmuebles[index];
-                          return ListTile(
-                            leading: inmueble["imagen"] != null
-                                ? ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: Image.asset(
-                                      inmueble["imagen"],
-                                      width: 50,
-                                      height: 50,
-                                      fit: BoxFit.cover,
-                                    ),
-                                  )
-                                : const Icon(Icons.home, size: 40),
-                            title: Text(inmueble["titulo"], style: const TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: Text(inmueble["direccion"]),
-                            trailing: Text(
-                              inmueble["precio"],
-                              style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
-                            ),
-                            onTap: () {
-                              Navigator.pop(context); // Cierra el modal de la lista
-                              _showInmuebleDetailModal(inmueble); // Abre el detalle
-                            },
-                          );
-                        },
-                      ),
+                  const SizedBox(height: 12),
+                  const TabBar(
+                    labelColor: Colors.white,
+                    unselectedLabelColor: Colors.grey,
+                    indicatorColor: Colors.white,
+                    tabs: [
+                      Tab(text: "Perfil"),
+                      Tab(text: "Inmueble"),
                     ],
                   ),
-                ),
-              ],
+                  Expanded(
+                    child: TabBarView(
+                      children: [
+                        // Perfil
+                        Padding(
+                          padding: const EdgeInsets.all(24.0),
+                          child: Column(
+                            children: [
+                              CircleAvatar(
+                                backgroundImage: AssetImage(perfil["avatar"]),
+                                radius: 40,
+                                backgroundColor: theme.primaryColorDark,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                perfil["nombre"],
+                                style: const TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                perfil["email"],
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey[400],
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                perfil["telefono"],
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey[400],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Lista de inmuebles
+                        ListView.separated(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: inmuebles.length,
+                          separatorBuilder: (_, __) => Divider(color: Colors.grey[700]),
+                          itemBuilder: (context, index) {
+                            final inmueble = inmuebles[index];
+                            return ListTile(
+                              tileColor: Colors.transparent,
+                              leading: inmueble["imagenes"] != null && inmueble["imagenes"].isNotEmpty
+                                  ? ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Image.network(
+                                        inmueble["imagenes"][0],
+                                        width: 50,
+                                        height: 50,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    )
+                                  : const Icon(Icons.home, size: 40, color: Colors.white),
+                              title: Text(
+                                inmueble["titulo"],
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              subtitle: Text(
+                                inmueble["direccion"],
+                                style: TextStyle(color: Colors.grey[400]),
+                              ),
+                              trailing: Text(
+                                inmueble["precio"],
+                                style: const TextStyle(
+                                  color: Colors.greenAccent,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              onTap: () {
+                                Navigator.pop(context); // Cierra el modal de la lista
+                                _showInmuebleDetailModal(inmueble); // Abre el detalle en un nuevo modal
+                              },
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
