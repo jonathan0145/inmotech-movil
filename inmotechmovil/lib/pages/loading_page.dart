@@ -15,6 +15,7 @@
 // }
 
 import 'package:flutter/material.dart';
+import '../config/app_colors.dart';
 
 class LoadingPage extends StatefulWidget {
   const LoadingPage({Key? key}) : super(key: key);
@@ -35,9 +36,11 @@ class _LoadingPageState extends State<LoadingPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.primaryBackground, // Color gris-azulado
       body: const Center(
-        child: CircularProgressIndicator(),
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+        ),
       ),
     );
   }
