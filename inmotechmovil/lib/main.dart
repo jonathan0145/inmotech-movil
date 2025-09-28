@@ -26,16 +26,18 @@ import 'pages/auth/register.dart';
 import 'pages/main_page.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const InmotechApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+class InmotechApp extends StatelessWidget {
+  const InmotechApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Inmotech Movil',
+      title: 'INMOTECH',
+      theme: ThemeData.dark(), // ← RESTAURÉ TU TEMA OSCURO
+      debugShowCheckedModeBanner: false,
       initialRoute: '/loading',
       routes: {
         '/loading': (context) => const LoadingPage(),
@@ -43,8 +45,6 @@ class MyApp extends StatelessWidget {
         '/register': (context) => const RegisterPage(),
         '/main': (context) => const MainPage(),
       },
-      theme: ThemeData.dark(),
-      debugShowCheckedModeBanner: false,
     );
   }
 }
