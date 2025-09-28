@@ -16,7 +16,12 @@ class ApiService {
       baseUrl: ApiConfig.apiBaseUrl,
       connectTimeout: ApiConfig.connectTimeout,
       receiveTimeout: ApiConfig.receiveTimeout,
+      sendTimeout: ApiConfig.sendTimeout,
       headers: ApiConfig.defaultHeaders,
+      // Configuraciones adicionales para conexiones lentas
+      followRedirects: true,
+      maxRedirects: 5,
+      persistentConnection: true,
     );
 
     // Interceptor para agregar el token automáticamente
@@ -27,9 +32,32 @@ class ApiService {
           if (token != null && token.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $token';
           }
+          
+          // Log para debug en desarrollo
+          if (ApiConfig.enableLogging) {
+            print('🚀 REQUEST: ${options.method} ${options.uri}');
+            print('📤 Headers: ${options.headers}');
+          }
+          
           handler.next(options);
         },
+        onResponse: (response, handler) {
+          // Log para debug en desarrollo
+          if (ApiConfig.enableLogging) {
+            print('✅ RESPONSE: ${response.statusCode} ${response.requestOptions.uri}');
+          }
+          handler.next(response);
+        },
         onError: (error, handler) async {
+          // Log para debug en desarrollo
+          if (ApiConfig.enableLogging) {
+            print('❌ ERROR: ${error.message}');
+            print('🔗 URL: ${error.requestOptions.uri}');
+            if (error.response != null) {
+              print('📥 Response: ${error.response?.statusCode} - ${error.response?.statusMessage}');
+            }
+          }
+          
           if (error.response?.statusCode == 401) {
             // Token expirado o inválido
             await _removeToken();
@@ -69,6 +97,45 @@ class ApiService {
   Future<Response> delete(String endpoint) async {
     try {
       return await _dio.delete(endpoint);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // Método con timeout personalizado para conexiones muy lentas
+  Future<Response> getWithCustomTimeout(
+    String endpoint, {
+    Map<String, dynamic>? queryParameters,
+    Duration? customTimeout,
+  }) async {
+    try {
+      return await _dio.get(
+        endpoint, 
+        queryParameters: queryParameters,
+        options: Options(
+          receiveTimeout: customTimeout ?? const Duration(minutes: 2),
+          sendTimeout: customTimeout ?? const Duration(minutes: 1),
+        ),
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<Response> postWithCustomTimeout(
+    String endpoint, {
+    dynamic data,
+    Duration? customTimeout,
+  }) async {
+    try {
+      return await _dio.post(
+        endpoint, 
+        data: data,
+        options: Options(
+          receiveTimeout: customTimeout ?? const Duration(minutes: 2),
+          sendTimeout: customTimeout ?? const Duration(minutes: 1),
+        ),
+      );
     } catch (e) {
       rethrow;
     }

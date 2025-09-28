@@ -6,9 +6,10 @@ class ApiConfig {
   // URL base principal - usando la IP de la red como en tu constants.js
   static const String baseUrl = networkBaseUrl;
   
-  // Configuraciones de tiempo de espera
-  static const Duration connectTimeout = Duration(seconds: 10);
-  static const Duration receiveTimeout = Duration(seconds: 10);
+  // Configuraciones de tiempo de espera (aumentadas para conexiones lentas por IP)
+  static const Duration connectTimeout = Duration(seconds: 30); // Tiempo para establecer conexión
+  static const Duration receiveTimeout = Duration(seconds: 60); // Tiempo para recibir respuesta
+  static const Duration sendTimeout = Duration(seconds: 30);    // Tiempo para enviar datos
   
   // Configuraciones de autenticación
   static const String tokenKey = 'auth_token';
