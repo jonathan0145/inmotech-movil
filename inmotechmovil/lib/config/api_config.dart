@@ -1,49 +1,103 @@
+import 'dart:io';
+
 class ApiConfig {
-  // URLs base - similar a tu constants.js
-  static const String localBaseUrl = 'http://localhost:3000/api';
-  static const String networkBaseUrl = 'http://192.168.20.21:3000/api';
+  // URLs base según el escenario
+  static const String devBaseUrl = 'http://localhost:3000/api';           // Desarrollo local
+  static const String networkBaseUrl = 'http://10.226.30.202:3000/api';  // Red WiFi actual
   
-  // URL base principal - usando la IP de la red como en tu constants.js
-  static const String baseUrl = networkBaseUrl;
+  // Lista de URLs a intentar (orden de prioridad)
+  static const List<String> possibleUrls = [
+    'http://localhost:3000/api',           // Desarrollo local (emulador/navegador)
+    'http://10.226.30.202:3000/api',       // Red WiFi actual
+    'http://192.168.20.21:3000/api',       // Red WiFi alternativa
+    'https://clypeal-iris-rigoristic.ngrok-free.dev/api',   // ngrok público
+  ];
+
+  static const int connectTimeout = 30000;
+  static const int receiveTimeout = 30000;
+  static const int sendTimeout = 30000;
   
-  // Configuraciones de tiempo de espera
-  static const Duration connectTimeout = Duration(seconds: 10);
-  static const Duration receiveTimeout = Duration(seconds: 10);
-  
-  // Configuraciones de autenticación
-  static const String tokenKey = 'auth_token';
-  static const String userIdKey = 'user_id';
-  
-  // Headers por defecto
   static const Map<String, String> defaultHeaders = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   };
-  
-  // Endpoints principales
+
+  // Detectar automáticamente qué URL usar
+  static Future<String> getApiBaseUrl() async {
+    print('🔍 Detectando servidor API disponible...');
+    
+    for (String url in possibleUrls) {
+      try {
+        final uri = Uri.parse(url);
+        final available = await _isServerAvailable(uri.host, uri.port);
+        if (available) {
+          print('✅ Servidor encontrado: $url');
+          _logConnectionType(url);
+          return url;
+        } else {
+          print('❌ No disponible: $url');
+        }
+      } catch (e) {
+        print('❌ Error probando $url: $e');
+        continue;
+      }
+    }
+    
+    // Si ninguna funciona, usar la de red como fallback
+    print('⚠️ Ningún servidor disponible, usando fallback: $networkBaseUrl');
+    return networkBaseUrl;
+  }
+
+  // Verificar si un servidor está disponible
+  static Future<bool> _isServerAvailable(String host, int port) async {
+    try {
+      final socket = await Socket.connect(
+        host, 
+        port, 
+        timeout: const Duration(seconds: 3),
+      );
+      socket.destroy();
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // Log del tipo de conexión
+  static void _logConnectionType(String url) {
+    if (url.contains('localhost') || url.contains('127.0.0.1')) {
+      print('🔧 Modo: DESARROLLO LOCAL');
+    } else if (url.contains('10.226.30.202')) {
+      print('🏠 Modo: RED WiFi ACTUAL');
+    } else if (url.contains('192.168.20.21')) {
+      print('🏠 Modo: RED WiFi ALTERNATIVA');
+    } else if (url.contains('ngrok-free.dev') || url.contains('ngrok.io')) {
+      print('🌐 Modo: PÚBLICO (ngrok)');
+    } else {
+      print('❓ Modo: DESCONOCIDO');
+    }
+  }
+
+  // Obtener tipo de conexión para mostrar en UI
+  static String getConnectionType(String url) {
+    if (url.contains('localhost') || url.contains('127.0.0.1')) {
+      return '🔧 Local';
+    } else if (url.contains('10.226.30.202')) {
+      return '🏠 WiFi';
+    } else if (url.contains('192.168.20.21')) {
+      return '🏠 WiFi Casa';
+    } else if (url.contains('ngrok-free.dev') || url.contains('ngrok.io')) {
+      return '🌐 Público';
+    } else {
+      return '❓ Desconocido';
+    }
+  }
+
+  // Endpoints
   static const String authEndpoint = '/auth';
-  static const String loginEndpoint = '/login';
-  static const String registerEndpoint = '/register';
-  static const String googleLoginEndpoint = '/google';
-  static const String profileEndpoint = '/auth/perfil';
-  
   static const String inmueblesEndpoint = '/inmuebles';
   static const String platformProfileEndpoint = '/platformprofile';
-  static const String platformUserEndpoint = '/platformuser';
-  
+  static const String visualizationsEndpoint = '/visualizations';
   static const String terminosEndpoint = '/terminosycondiciones';
   static const String politicaEndpoint = '/politicadeprivacidad';
-  static const String sobreNosotrosEndpoint = '/sobrenosotros';
-  static const String preguntasEndpoint = '/preguntasfrecuentes';
-  static const String carruselEndpoint = '/carrusel';
-  static const String porqueElegirnosEndpoint = '/porqueelegirnos';
-  
-  static const String visualizationsEndpoint = '/visualizations';
-  
-  // Configuraciones de entorno
-  static const bool isProduction = false; // Cambiar a true en producción
-  static const bool enableLogging = true; // Deshabilitar en producción
-  
-  // Método para obtener la URL base (como getter)
-  static String get apiBaseUrl => baseUrl;
 }
