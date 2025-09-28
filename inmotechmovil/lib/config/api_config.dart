@@ -1,16 +1,22 @@
 import 'dart:io';
 
 class ApiConfig {
-  // URLs de tu API según el modo
-  static const String devBaseUrl = 'http://localhost:3000/api';      // Para npm run dev
-  static const String prodBaseUrl = 'http://192.168.20.21:3000/api'; // Para npm start
+  // URLs según el escenario
+  static const String devBaseUrl = 'http://localhost:3000/api';           // Solo en tu PC
+  static const String networkBaseUrl = 'http://10.226.30.202:3000/api';  // En tu red WiFi
   
-  // Timeouts aumentados para conexiones lentas
-  static const int connectTimeout = 30000; // 30 segundos
-  static const int receiveTimeout = 30000; // 30 segundos
-  static const int sendTimeout = 30000;    // 30 segundos
+  // Lista de URLs a intentar (orden de prioridad)
+  static const List<String> possibleUrls = [
+    'http://localhost:3000/api',           // Desarrollo local (emulador/navegador)
+    'http://10.226.30.202:3000/api',       // Red WiFi actual
+    'http://192.168.20.21:3000/api',       // Red WiFi alternativa (casa)
+    'https://clypeal-iris-rigoristic.ngrok-free.dev/api',   // <-- TU URL REAL DE NGROK
+  ];
+
+  static const int connectTimeout = 30000;
+  static const int receiveTimeout = 30000;
+  static const int sendTimeout = 30000;
   
-  // Headers por defecto
   static const Map<String, String> defaultHeaders = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -18,29 +24,28 @@ class ApiConfig {
 
   // Detectar automáticamente qué URL usar
   static Future<String> getApiBaseUrl() async {
-    try {
-      // Primero intentar localhost (modo desarrollo)
-      final localhost = await _isServerAvailable('localhost', 3000);
-      if (localhost) {
-        print('🔧 Conectando a API en modo DESARROLLO: $devBaseUrl');
-        return devBaseUrl;
+    print('🔍 Detectando servidor API disponible...');
+    
+    for (String url in possibleUrls) {
+      try {
+        final uri = Uri.parse(url);
+        final available = await _isServerAvailable(uri.host, uri.port);
+        if (available) {
+          print('✅ Servidor encontrado: $url');
+          _logConnectionType(url);
+          return url;
+        } else {
+          print('❌ No disponible: $url');
+        }
+      } catch (e) {
+        print('❌ Error probando $url: $e');
+        continue;
       }
-      
-      // Si localhost no está disponible, intentar IP de red (modo producción)
-      final networkServer = await _isServerAvailable('192.168.20.21', 3000);
-      if (networkServer) {
-        print('🌐 Conectando a API en modo PRODUCCIÓN: $prodBaseUrl');
-        return prodBaseUrl;
-      }
-      
-      // Si ninguno está disponible, usar producción como fallback
-      print('⚠️ No se pudo detectar el servidor, usando fallback: $prodBaseUrl');
-      return prodBaseUrl;
-      
-    } catch (e) {
-      print('❌ Error detectando servidor: $e');
-      return prodBaseUrl; // Fallback a producción
     }
+    
+    // Si ninguna funciona, usar la de red como fallback
+    print('⚠️ Ningún servidor disponible, usando fallback: $networkBaseUrl');
+    return networkBaseUrl;
   }
 
   // Verificar si un servidor está disponible
@@ -58,7 +63,22 @@ class ApiConfig {
     }
   }
 
-  // Endpoints específicos
+  // Log del tipo de conexión
+  static void _logConnectionType(String url) {
+    if (url.contains('localhost') || url.contains('127.0.0.1')) {
+      print('🔧 Modo: DESARROLLO LOCAL');
+    } else if (url.contains('10.226.30.202')) {
+      print('🏠 Modo: RED WiFi ACTUAL');
+    } else if (url.contains('192.168.20.21')) {
+      print('🏠 Modo: RED WiFi CASA');
+    } else if (url.contains('ngrok-free.dev') || url.contains('ngrok.io')) {
+      print('🌐 Modo: PÚBLICO (ngrok)');
+    } else {
+      print('❓ Modo: DESCONOCIDO');
+    }
+  }
+
+  // Endpoints
   static const String authEndpoint = '/auth';
   static const String inmueblesEndpoint = '/inmuebles';
   static const String platformProfileEndpoint = '/platformprofile';
@@ -66,7 +86,6 @@ class ApiConfig {
   static const String terminosEndpoint = '/terminosycondiciones';
   static const String politicaEndpoint = '/politicadeprivacidad';
   
-  // Método para obtener URL completa de endpoint
   static Future<String> getEndpointUrl(String endpoint) async {
     final baseUrl = await getApiBaseUrl();
     return '$baseUrl$endpoint';
