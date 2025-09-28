@@ -2,29 +2,27 @@ import 'package:flutter/material.dart';
 
 /// Clase que define todos los colores utilizados en la aplicación
 class AppColors {
-  // Color principal de fondo (gris-azulado basado en la imagen proporcionada)
-  static const Color primaryBackground = Color(0xFF6B8CAE);
+  // Color de fondo gris-azulado que pediste
+  static const Color backgroundGray = Color(0xFF6B8CAE);
+  static const Color primaryBackground = Color(0xFF6B8CAE); // Alias para compatibilidad
   
-  // Colores para cards y superficies
-  static const Color cardBackground = Color(0xFFFFFFFF);
-  static const Color surfaceColor = Color(0xFFF8F9FA);
+  // Colores primarios
+  static const Color primaryBlue = Color(0xFF2196F3);
+  static const Color darkGray = Color(0xFF424242);
   
-  // Colores de texto
-  static const Color textPrimary = Color(0xFF2C3E50);
-  static const Color textSecondary = Color(0xFF7F8C8D);
-  static const Color textLight = Color(0xFFFFFFFF);
+  // Colores adicionales
+  static const Color lightGray = Color(0xFFF5F5F5);
+  static const Color white = Color(0xFFFFFFFF);
+  static const Color black = Color(0xFF000000);
   
   // Colores de estado
-  static const Color success = Color(0xFF27AE60);
-  static const Color error = Color(0xFFE74C3C);
-  static const Color warning = Color(0xFFF39C12);
-  static const Color info = Color(0xFF3498DB);
+  static const Color success = Color(0xFF4CAF50);
+  static const Color error = Color(0xFFF44336);
+  static const Color warning = Color(0xFFFF9800);
+  static const Color info = Color(0xFF2196F3);
   
-  // Colores de acento
-  static const Color primary = Color(0xFF2980B9);
-  static const Color accent = Color(0xFF8E44AD);
-  
-  // Colores de borde
-  static const Color borderLight = Color(0xFFE1E8ED);
-  static const Color borderDark = Color(0xFFBDC3C7);
+  // Colores de texto
+  static const Color textPrimary = Color(0xFF212121);
+  static const Color textSecondary = Color(0xFF757575);
+  static const Color textHint = Color(0xFF9E9E9E);
 }

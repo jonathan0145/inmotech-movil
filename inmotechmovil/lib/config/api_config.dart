@@ -1,50 +1,74 @@
+import 'dart:io';
+
 class ApiConfig {
-  // URLs base - similar a tu constants.js
-  static const String localBaseUrl = 'http://localhost:3000/api';
-  static const String networkBaseUrl = 'http://192.168.20.21:3000/api';
+  // URLs de tu API según el modo
+  static const String devBaseUrl = 'http://localhost:3000/api';      // Para npm run dev
+  static const String prodBaseUrl = 'http://192.168.20.21:3000/api'; // Para npm start
   
-  // URL base principal - usando la IP de la red como en tu constants.js
-  static const String baseUrl = networkBaseUrl;
-  
-  // Configuraciones de tiempo de espera (aumentadas para conexiones lentas por IP)
-  static const Duration connectTimeout = Duration(seconds: 30); // Tiempo para establecer conexión
-  static const Duration receiveTimeout = Duration(seconds: 60); // Tiempo para recibir respuesta
-  static const Duration sendTimeout = Duration(seconds: 30);    // Tiempo para enviar datos
-  
-  // Configuraciones de autenticación
-  static const String tokenKey = 'auth_token';
-  static const String userIdKey = 'user_id';
+  // Timeouts aumentados para conexiones lentas
+  static const int connectTimeout = 30000; // 30 segundos
+  static const int receiveTimeout = 30000; // 30 segundos
+  static const int sendTimeout = 30000;    // 30 segundos
   
   // Headers por defecto
   static const Map<String, String> defaultHeaders = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   };
-  
-  // Endpoints principales
+
+  // Detectar automáticamente qué URL usar
+  static Future<String> getApiBaseUrl() async {
+    try {
+      // Primero intentar localhost (modo desarrollo)
+      final localhost = await _isServerAvailable('localhost', 3000);
+      if (localhost) {
+        print('🔧 Conectando a API en modo DESARROLLO: $devBaseUrl');
+        return devBaseUrl;
+      }
+      
+      // Si localhost no está disponible, intentar IP de red (modo producción)
+      final networkServer = await _isServerAvailable('192.168.20.21', 3000);
+      if (networkServer) {
+        print('🌐 Conectando a API en modo PRODUCCIÓN: $prodBaseUrl');
+        return prodBaseUrl;
+      }
+      
+      // Si ninguno está disponible, usar producción como fallback
+      print('⚠️ No se pudo detectar el servidor, usando fallback: $prodBaseUrl');
+      return prodBaseUrl;
+      
+    } catch (e) {
+      print('❌ Error detectando servidor: $e');
+      return prodBaseUrl; // Fallback a producción
+    }
+  }
+
+  // Verificar si un servidor está disponible
+  static Future<bool> _isServerAvailable(String host, int port) async {
+    try {
+      final socket = await Socket.connect(
+        host, 
+        port, 
+        timeout: const Duration(seconds: 3),
+      );
+      socket.destroy();
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // Endpoints específicos
   static const String authEndpoint = '/auth';
-  static const String loginEndpoint = '/login';
-  static const String registerEndpoint = '/register';
-  static const String googleLoginEndpoint = '/google';
-  static const String profileEndpoint = '/auth/perfil';
-  
   static const String inmueblesEndpoint = '/inmuebles';
   static const String platformProfileEndpoint = '/platformprofile';
-  static const String platformUserEndpoint = '/platformuser';
-  
+  static const String visualizationsEndpoint = '/visualizations';
   static const String terminosEndpoint = '/terminosycondiciones';
   static const String politicaEndpoint = '/politicadeprivacidad';
-  static const String sobreNosotrosEndpoint = '/sobrenosotros';
-  static const String preguntasEndpoint = '/preguntasfrecuentes';
-  static const String carruselEndpoint = '/carrusel';
-  static const String porqueElegirnosEndpoint = '/porqueelegirnos';
   
-  static const String visualizationsEndpoint = '/visualizations';
-  
-  // Configuraciones de entorno
-  static const bool isProduction = false; // Cambiar a true en producción
-  static const bool enableLogging = true; // Deshabilitar en producción
-  
-  // Método para obtener la URL base (como getter)
-  static String get apiBaseUrl => baseUrl;
+  // Método para obtener URL completa de endpoint
+  static Future<String> getEndpointUrl(String endpoint) async {
+    final baseUrl = await getApiBaseUrl();
+    return '$baseUrl$endpoint';
+  }
 }

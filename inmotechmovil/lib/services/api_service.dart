@@ -3,153 +3,148 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
 
 class ApiService {
-  static final Dio _dio = Dio();
-  
   static ApiService? _instance;
+  late Dio _dio;
+  String? _currentBaseUrl;
+
+  ApiService._internal() {
+    _initializeDio();
+  }
+
   static ApiService get instance {
-    _instance ??= ApiService._init();
+    _instance ??= ApiService._internal();
     return _instance!;
   }
 
-  ApiService._init() {
-    _dio.options = BaseOptions(
-      baseUrl: ApiConfig.apiBaseUrl,
-      connectTimeout: ApiConfig.connectTimeout,
-      receiveTimeout: ApiConfig.receiveTimeout,
-      sendTimeout: ApiConfig.sendTimeout,
+  Future<void> _initializeDio() async {
+    // Detectar automáticamente la URL base
+    _currentBaseUrl = await ApiConfig.getApiBaseUrl();
+    
+    _dio = Dio(BaseOptions(
+      baseUrl: _currentBaseUrl!, // baseUrl en lugar de baseURL
+      connectTimeout: Duration(milliseconds: ApiConfig.connectTimeout),
+      receiveTimeout: Duration(milliseconds: ApiConfig.receiveTimeout),
+      sendTimeout: Duration(milliseconds: ApiConfig.sendTimeout),
       headers: ApiConfig.defaultHeaders,
-      // Configuraciones adicionales para conexiones lentas
-      followRedirects: true,
-      maxRedirects: 5,
-      persistentConnection: true,
-    );
+      validateStatus: (status) => status != null && status < 500,
+    ));
 
-    // Interceptor para agregar el token automáticamente
+    // Interceptor para agregar token automáticamente
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          final token = await _getToken();
-          if (token != null && token.isNotEmpty) {
+          final prefs = await SharedPreferences.getInstance();
+          final token = prefs.getString('auth_token');
+          
+          if (token != null) {
             options.headers['Authorization'] = 'Bearer $token';
           }
           
-          // Log para debug en desarrollo
-          if (ApiConfig.enableLogging) {
-            print('🚀 REQUEST: ${options.method} ${options.uri}');
-            print('📤 Headers: ${options.headers}');
-          }
-          
+          print('🔄 ${options.method} ${options.path}');
           handler.next(options);
         },
         onResponse: (response, handler) {
-          // Log para debug en desarrollo
-          if (ApiConfig.enableLogging) {
-            print('✅ RESPONSE: ${response.statusCode} ${response.requestOptions.uri}');
-          }
+          print('✅ ${response.statusCode} ${response.requestOptions.path}');
           handler.next(response);
         },
-        onError: (error, handler) async {
-          // Log para debug en desarrollo
-          if (ApiConfig.enableLogging) {
-            print('❌ ERROR: ${error.message}');
-            print('🔗 URL: ${error.requestOptions.uri}');
-            if (error.response != null) {
-              print('📥 Response: ${error.response?.statusCode} - ${error.response?.statusMessage}');
-            }
-          }
-          
+        onError: (error, handler) {
+          print('❌ Error: ${error.message}');
           if (error.response?.statusCode == 401) {
-            // Token expirado o inválido
-            await _removeToken();
-            // Aquí podrías navegar a la pantalla de login
+            _handleUnauthorized();
           }
           handler.next(error);
         },
       ),
     );
+
+    print('🚀 ApiService inicializado con: $_currentBaseUrl');
+  }
+
+  // Reconectar automáticamente si cambia el modo de la API
+  Future<void> reconnect() async {
+    final newBaseUrl = await ApiConfig.getApiBaseUrl();
+    if (newBaseUrl != _currentBaseUrl) {
+      print('🔄 Cambiando URL de $_currentBaseUrl a $newBaseUrl');
+      _currentBaseUrl = newBaseUrl;
+      _dio.options.baseUrl = newBaseUrl; // baseUrl en lugar de baseURL
+    }
+  }
+
+  void _handleUnauthorized() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('auth_token');
+  }
+
+  // Métodos para manejo de tokens
+  Future<void> saveToken(String token) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('auth_token', token);
+  }
+
+  Future<void> clearToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('auth_token');
+  }
+
+  Future<bool> isAuthenticated() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token');
+    return token != null && token.isNotEmpty;
   }
 
   // Métodos HTTP genéricos
-  Future<Response> get(String endpoint, {Map<String, dynamic>? queryParameters}) async {
+  Future<Response> get(String path, {Map<String, dynamic>? queryParameters}) async {
     try {
-      return await _dio.get(endpoint, queryParameters: queryParameters);
+      await reconnect();
+      return await _dio.get(path, queryParameters: queryParameters);
     } catch (e) {
       rethrow;
     }
   }
 
-  Future<Response> post(String endpoint, {dynamic data}) async {
+  Future<Response> post(String path, {dynamic data}) async {
     try {
-      return await _dio.post(endpoint, data: data);
+      await reconnect();
+      return await _dio.post(path, data: data);
     } catch (e) {
       rethrow;
     }
   }
 
-  Future<Response> put(String endpoint, {dynamic data}) async {
+  Future<Response> put(String path, {dynamic data}) async {
     try {
-      return await _dio.put(endpoint, data: data);
+      await reconnect();
+      return await _dio.put(path, data: data);
     } catch (e) {
       rethrow;
     }
   }
 
-  Future<Response> delete(String endpoint) async {
+  Future<Response> delete(String path) async {
     try {
-      return await _dio.delete(endpoint);
+      await reconnect();
+      return await _dio.delete(path);
     } catch (e) {
       rethrow;
     }
   }
 
-  // Método con timeout personalizado para conexiones muy lentas
-  Future<Response> getWithCustomTimeout(
-    String endpoint, {
-    Map<String, dynamic>? queryParameters,
-    Duration? customTimeout,
+  // Método para subir archivos con FormData (ESTE ES EL QUE FALTABA)
+  Future<Response> postMultipart(String path, FormData formData, {
+    Function(int, int)? onSendProgress,
   }) async {
     try {
-      return await _dio.get(
-        endpoint, 
-        queryParameters: queryParameters,
-        options: Options(
-          receiveTimeout: customTimeout ?? const Duration(minutes: 2),
-          sendTimeout: customTimeout ?? const Duration(minutes: 1),
-        ),
-      );
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  Future<Response> postWithCustomTimeout(
-    String endpoint, {
-    dynamic data,
-    Duration? customTimeout,
-  }) async {
-    try {
+      await reconnect();
       return await _dio.post(
-        endpoint, 
-        data: data,
-        options: Options(
-          receiveTimeout: customTimeout ?? const Duration(minutes: 2),
-          sendTimeout: customTimeout ?? const Duration(minutes: 1),
-        ),
-      );
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  Future<Response> postMultipart(String endpoint, FormData formData) async {
-    try {
-      return await _dio.post(
-        endpoint,
+        path,
         data: formData,
+        onSendProgress: onSendProgress,
         options: Options(
           headers: {
             'Content-Type': 'multipart/form-data',
           },
+          sendTimeout: const Duration(minutes: 5), // 5 minutos para subida
+          receiveTimeout: const Duration(minutes: 5),
         ),
       );
     } catch (e) {
@@ -157,29 +152,70 @@ class ApiService {
     }
   }
 
-  // Manejo del token
-  Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(ApiConfig.tokenKey);
+  // Método para subir archivos con timeouts largos (mantenemos ambos por compatibilidad)
+  Future<Response> uploadFile(String path, FormData formData, {
+    Function(int, int)? onSendProgress,
+  }) async {
+    return await postMultipart(path, formData, onSendProgress: onSendProgress);
   }
 
-  Future<void> saveToken(String token) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(ApiConfig.tokenKey, token);
+  // Método PUT para multipart (útil para actualizar archivos)
+  Future<Response> putMultipart(String path, FormData formData, {
+    Function(int, int)? onSendProgress,
+  }) async {
+    try {
+      await reconnect();
+      return await _dio.put(
+        path,
+        data: formData,
+        onSendProgress: onSendProgress,
+        options: Options(
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+          sendTimeout: const Duration(minutes: 5),
+          receiveTimeout: const Duration(minutes: 5),
+        ),
+      );
+    } catch (e) {
+      rethrow;
+    }
   }
 
-  Future<void> _removeToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(ApiConfig.tokenKey);
+  // Método para verificar conectividad
+  Future<bool> isConnected() async {
+    try {
+      final response = await _dio.get('/test', 
+        options: Options(
+          sendTimeout: const Duration(seconds: 5),
+          receiveTimeout: const Duration(seconds: 5),
+        ),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
   }
 
-  Future<void> clearToken() async {
-    await _removeToken();
+  // Método para descargar archivos
+  Future<Response> downloadFile(String path, String savePath, {
+    Function(int, int)? onReceiveProgress,
+  }) async {
+    try {
+      await reconnect();
+      return await _dio.download(
+        path,
+        savePath,
+        onReceiveProgress: onReceiveProgress,
+        options: Options(
+          receiveTimeout: const Duration(minutes: 10),
+        ),
+      );
+    } catch (e) {
+      rethrow;
+    }
   }
 
-  // Método para verificar si el usuario está autenticado
-  Future<bool> isAuthenticated() async {
-    final token = await _getToken();
-    return token != null && token.isNotEmpty;
-  }
+  // Obtener información del servidor actual
+  String get currentBaseUrl => _currentBaseUrl ?? 'No configurado';
 }

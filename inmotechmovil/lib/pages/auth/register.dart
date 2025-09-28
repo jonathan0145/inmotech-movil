@@ -16,556 +16,156 @@ class _RegisterPageState extends State<RegisterPage> {
   final _usuarioController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  
+  final _confirmPasswordController = TextEditingController();
+
   final AuthService _authService = AuthService();
   
   bool _isLoading = false;
-  bool _isValidating = false;
   bool _obscurePassword = true;
-  String? _errorMessage;
-  String? _successMessage;
+  bool _obscureConfirmPassword = true;
   
   // Estados de validación en tiempo real
-  bool? _usuarioDisponible;
-  bool? _correoDisponible;
-  bool _usuarioChecking = false;
-  bool _correoChecking = false;
+  bool _isValidatingUsername = false;
+  bool _isValidatingEmail = false;
+  bool _usernameAvailable = false;
+  bool _emailAvailable = false;
+  bool _usernameChecked = false;
+  bool _emailChecked = false;
   
-  Timer? _usuarioDebounceTimer;
-  Timer? _correoDebounceTimer;
+  Timer? _usernameDebouncer;
+  Timer? _emailDebouncer;
 
   @override
-  void dispose() {
-    _usuarioController.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
-    _usuarioDebounceTimer?.cancel();
-    _correoDebounceTimer?.cancel();
-    super.dispose();
-  }
-
-  void _checkUsuarioDisponible(String usuario) {
-    if (usuario.length < 3) {
-      setState(() {
-        _usuarioDisponible = null;
-        _usuarioChecking = false;
-      });
-      return;
-    }
-
-    if (!AuthValidators.isValidUsuarioFormat(usuario)) {
-      setState(() {
-        _usuarioDisponible = null;
-        _usuarioChecking = false;
-      });
-      return;
-    }
-
-    setState(() {
-      _usuarioChecking = true;
-    });
-
-    _usuarioDebounceTimer?.cancel();
-    _usuarioDebounceTimer = Timer(const Duration(milliseconds: 500), () async {
-      try {
-        final disponible = await _authService.checkUsuarioDisponible(usuario);
-        if (mounted) {
-          setState(() {
-            _usuarioDisponible = disponible;
-            _usuarioChecking = false;
-          });
-        }
-      } catch (e) {
-        if (mounted) {
-          setState(() {
-            _usuarioDisponible = null;
-            _usuarioChecking = false;
-          });
-        }
-      }
-    });
-  }
-
-  void _checkCorreoDisponible(String correo) {
-    if (correo.length < 5) {
-      setState(() {
-        _correoDisponible = null;
-        _correoChecking = false;
-      });
-      return;
-    }
-
-    if (!AuthValidators.isValidEmailFormat(correo)) {
-      setState(() {
-        _correoDisponible = null;
-        _correoChecking = false;
-      });
-      return;
-    }
-
-    setState(() {
-      _correoChecking = true;
-    });
-
-    _correoDebounceTimer?.cancel();
-    _correoDebounceTimer = Timer(const Duration(milliseconds: 500), () async {
-      try {
-        final disponible = await _authService.checkCorreoDisponible(correo);
-        if (mounted) {
-          setState(() {
-            _correoDisponible = disponible;
-            _correoChecking = false;
-          });
-        }
-      } catch (e) {
-        if (mounted) {
-          setState(() {
-            _correoDisponible = null;
-            _correoChecking = false;
-          });
-        }
-      }
-    });
-  }
-
-  Future<bool> _validarRegistro() async {
-    // Validación de usuario
-    if (_usuarioDisponible == false) {
-      setState(() {
-        _errorMessage = 'El usuario ya está registrado.';
-      });
-      return false;
-    }
-
-    // Validación de correo
-    if (_correoDisponible == false) {
-      setState(() {
-        _errorMessage = 'El correo ya está registrado.';
-      });
-      return false;
-    }
-
-    // Otras validaciones ya están manejadas por los validators de los campos
-    setState(() {
-      _errorMessage = null;
-    });
-    return true;
-  }
-
-  Future<void> _handleRegister() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() {
-      _isValidating = true;
-      _errorMessage = null;
-      _successMessage = null;
-    });
-
-    final valido = await _validarRegistro();
-    setState(() {
-      _isValidating = false;
-    });
-
-    if (!valido) return;
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      await _authService.register(
-        _usuarioController.text.trim(),
-        _emailController.text.trim(),
-        _passwordController.text,
-      );
-
-      setState(() {
-        _successMessage = 'Registro exitoso. Por favor inicia sesión.';
-        _errorMessage = null;
-      });
-
-      // Navegar al login después de un delay
-      Future.delayed(const Duration(seconds: 2), () {
-        if (mounted) {
-          Navigator.pushReplacementNamed(context, '/login');
-        }
-      });
-
-    } catch (error) {
-      setState(() {
-        _errorMessage = error.toString();
-        _successMessage = null;
-      });
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
+  void initState() {
+    super.initState();
+    _usuarioController.addListener(_onUsernameChanged);
+    _emailController.addListener(_onEmailChanged);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.primaryBackground, // Color gris-azulado de la imagen
+      backgroundColor: AppColors.backgroundGray, // Usando el color correcto
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: const Text(
+          'Registro',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        centerTitle: true,
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child: Card(
-              elevation: 8,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(32.0),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Logo
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: Image.asset(
-                          'assets/icon.png',
-                          width: 80,
-                          height: 80,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              width: 80,
-                              height: 80,
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).primaryColor,
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: const Icon(
-                                Icons.home,
-                                size: 40,
-                                color: Colors.white,
-                              ),
-                            );
-                          },
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Center(
+            child: SingleChildScrollView(
+              child: Card(
+                elevation: 8,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(32.0),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Logo o título
+                        const Icon(
+                          Icons.person_add,
+                          size: 80,
+                          color: AppColors.primaryBlue,
                         ),
-                      ),
-                      const SizedBox(height: 24),
-                      
-                      // Título
-                      Text(
-                        'Registro',
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
+                        const SizedBox(height: 24),
+                        
+                        const Text(
+                          'Crear Cuenta',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.darkGray,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      
-                      Text(
-                        'Crea tu cuenta para comenzar',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      const SizedBox(height: 32),
+                        const SizedBox(height: 32),
 
-                      // Mensajes de error/éxito
-                      if (_errorMessage != null) ...[
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.red[50],
-                            border: Border.all(color: Colors.red[300]!),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.error_outline, color: Colors.red[700]),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  _errorMessage!,
-                                  style: TextStyle(color: Colors.red[700]),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        // Campo Usuario
+                        _buildUsernameField(),
                         const SizedBox(height: 16),
-                      ],
 
-                      if (_successMessage != null) ...[
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.green[50],
-                            border: Border.all(color: Colors.green[300]!),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.check_circle_outline, color: Colors.green[700]),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  _successMessage!,
-                                  style: TextStyle(color: Colors.green[700]),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        // Campo Email
+                        _buildEmailField(),
                         const SizedBox(height: 16),
-                      ],
 
-                      // Campo Usuario
-                      TextFormField(
-                        controller: _usuarioController,
-                        decoration: InputDecoration(
-                          labelText: 'Usuario',
-                          hintText: 'Ingresa tu usuario',
-                          prefixIcon: const Icon(Icons.person_outline),
-                          suffixIcon: _usuarioChecking
-                              ? Container(
-                                  width: 20,
-                                  height: 20,
-                                  padding: const EdgeInsets.all(12),
-                                  child: const CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : _usuarioDisponible == true
-                                  ? const Icon(Icons.check_circle, color: Colors.green)
-                                  : _usuarioDisponible == false
-                                      ? const Icon(Icons.error, color: Colors.red)
-                                      : null,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: _usuarioDisponible == false 
-                                  ? Colors.red 
-                                  : _usuarioDisponible == true 
-                                      ? Colors.green 
-                                      : Colors.grey[300]!
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Theme.of(context).primaryColor),
-                          ),
-                        ),
-                        keyboardType: TextInputType.text,
-                        textInputAction: TextInputAction.next,
-                        onChanged: (value) {
-                          _checkUsuarioDisponible(value);
-                        },
-                        validator: (value) => AuthValidators.validateUsuario(value ?? ''),
-                      ),
-                      if (_usuarioDisponible == false || (_usuarioController.text.isNotEmpty && !AuthValidators.isValidUsuarioFormat(_usuarioController.text))) ...[
-                        const SizedBox(height: 4),
-                        Container(
-                          width: double.infinity,
-                          child: Text(
-                            _usuarioDisponible == false 
-                                ? 'El usuario ya está registrado.'
-                                : 'Solo letras, números y guion bajo. 3-20 caracteres.',
-                            style: const TextStyle(
-                              color: Colors.red,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 20),
+                        // Campo Contraseña
+                        _buildPasswordField(),
+                        const SizedBox(height: 16),
 
-                      // Campo Correo
-                      TextFormField(
-                        controller: _emailController,
-                        decoration: InputDecoration(
-                          labelText: 'Correo',
-                          hintText: 'Ingresa tu correo',
-                          prefixIcon: const Icon(Icons.email_outlined),
-                          suffixIcon: _correoChecking
-                              ? Container(
-                                  width: 20,
-                                  height: 20,
-                                  padding: const EdgeInsets.all(12),
-                                  child: const CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : _correoDisponible == true
-                                  ? const Icon(Icons.check_circle, color: Colors.green)
-                                  : _correoDisponible == false
-                                      ? const Icon(Icons.error, color: Colors.red)
-                                      : null,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: _correoDisponible == false 
-                                  ? Colors.red 
-                                  : _correoDisponible == true 
-                                      ? Colors.green 
-                                      : Colors.grey[300]!
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Theme.of(context).primaryColor),
-                          ),
-                        ),
-                        keyboardType: TextInputType.emailAddress,
-                        textInputAction: TextInputAction.next,
-                        onChanged: (value) {
-                          _checkCorreoDisponible(value);
-                        },
-                        validator: (value) => AuthValidators.validateEmail(value ?? ''),
-                      ),
-                      if (_correoDisponible == false || (_emailController.text.isNotEmpty && !AuthValidators.isValidEmailFormat(_emailController.text))) ...[
-                        const SizedBox(height: 4),
-                        Container(
-                          width: double.infinity,
-                          child: Text(
-                            _correoDisponible == false 
-                                ? 'El correo ya está registrado.'
-                                : 'Ingresa un correo válido.',
-                            style: const TextStyle(
-                              color: Colors.red,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 20),
+                        // Campo Confirmar Contraseña
+                        _buildConfirmPasswordField(),
+                        const SizedBox(height: 24),
 
-                      // Campo Contraseña
-                      TextFormField(
-                        controller: _passwordController,
-                        obscureText: _obscurePassword,
-                        decoration: InputDecoration(
-                          labelText: 'Contraseña',
-                          hintText: 'Ingresa tu contraseña',
-                          prefixIcon: const Icon(Icons.lock_outline),
-                          suffixIcon: IconButton(
-                            onPressed: () {
-                              setState(() {
-                                _obscurePassword = !_obscurePassword;
-                              });
-                            },
-                            icon: Icon(
-                              _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                            ),
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Colors.grey[300]!),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Theme.of(context).primaryColor),
-                          ),
-                        ),
-                        textInputAction: TextInputAction.done,
-                        onFieldSubmitted: (_) => _handleRegister(),
-                        validator: (value) => AuthValidators.validatePassword(value ?? '', isRegistration: true),
-                      ),
-                      if (_passwordController.text.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Container(
-                          width: double.infinity,
-                          child: Text(
-                            AuthValidators.getPasswordRequirements(),
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 32),
-
-                      // Botón de Registro
-                      SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: ElevatedButton(
-                          onPressed: (_isLoading || _isValidating) ? null : _handleRegister,
+                        // Botón Registro
+                        ElevatedButton(
+                          onPressed: _canRegister() ? _register : null,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(context).primaryColor,
+                            backgroundColor: AppColors.primaryBlue,
                             foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                            elevation: 2,
                           ),
-                          child: (_isLoading || _isValidating)
+                          child: _isLoading
                               ? const SizedBox(
                                   height: 20,
                                   width: 20,
                                   child: CircularProgressIndicator(
+                                    color: Colors.white,
                                     strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                   ),
                                 )
-                              : Text(
-                                  _isValidating ? 'Validando...' : 'Registrarse',
-                                  style: const TextStyle(
+                              : const Text(
+                                  'Registrarse',
+                                  style: TextStyle(
                                     fontSize: 16,
-                                    fontWeight: FontWeight.w600,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
                         ),
-                      ),
-                      const SizedBox(height: 24),
+                        const SizedBox(height: 16),
 
-                      // Divider
-                      Row(
-                        children: [
-                          Expanded(child: Divider(color: Colors.grey[300])),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Text(
-                              'o',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                          Expanded(child: Divider(color: Colors.grey[300])),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Botón de Login
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pushReplacementNamed(context, '/login');
-                        },
-                        child: RichText(
-                          text: TextSpan(
-                            text: '¿Ya tienes cuenta? ',
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 14,
-                            ),
-                            children: [
-                              TextSpan(
-                                text: 'Inicia sesión',
-                                style: TextStyle(
-                                  color: Theme.of(context).primaryColor,
-                                  fontWeight: FontWeight.w600,
+                        // Link a login
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                          },
+                          child: RichText(
+                            textAlign: TextAlign.center,
+                            text: const TextSpan(
+                              style: TextStyle(color: Colors.black87),
+                              children: [
+                                TextSpan(text: '¿Ya tienes cuenta? '),
+                                TextSpan(
+                                  text: 'Inicia Sesión',
+                                  style: TextStyle(
+                                    color: AppColors.primaryBlue,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -574,5 +174,233 @@ class _RegisterPageState extends State<RegisterPage> {
         ),
       ),
     );
+  }
+
+  Widget _buildUsernameField() {
+    return TextFormField(
+      controller: _usuarioController,
+      decoration: InputDecoration(
+        labelText: 'Usuario',
+        prefixIcon: const Icon(Icons.person),
+        suffixIcon: _buildValidationIcon(_isValidatingUsername, _usernameAvailable, _usernameChecked),
+        border: const OutlineInputBorder(),
+        helperText: 'Entre 3 y 20 caracteres, solo letras, números y _',
+        helperMaxLines: 2,
+      ),
+      validator: AuthValidators.validateUsername,
+    );
+  }
+
+  Widget _buildEmailField() {
+    return TextFormField(
+      controller: _emailController,
+      keyboardType: TextInputType.emailAddress,
+      decoration: InputDecoration(
+        labelText: 'Correo Electrónico',
+        prefixIcon: const Icon(Icons.email),
+        suffixIcon: _buildValidationIcon(_isValidatingEmail, _emailAvailable, _emailChecked),
+        border: const OutlineInputBorder(),
+        helperText: 'No se permiten correos temporales',
+        helperMaxLines: 2,
+      ),
+      validator: AuthValidators.validateEmail,
+    );
+  }
+
+  Widget _buildPasswordField() {
+    return TextFormField(
+      controller: _passwordController,
+      obscureText: _obscurePassword,
+      decoration: InputDecoration(
+        labelText: 'Contraseña',
+        prefixIcon: const Icon(Icons.lock),
+        suffixIcon: IconButton(
+          icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off),
+          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+        ),
+        border: const OutlineInputBorder(),
+        helperText: 'Mínimo 8 caracteres, incluir mayúscula, minúscula y número',
+        helperMaxLines: 3,
+      ),
+      validator: AuthValidators.validatePassword,
+    );
+  }
+
+  Widget _buildConfirmPasswordField() {
+    return TextFormField(
+      controller: _confirmPasswordController,
+      obscureText: _obscureConfirmPassword,
+      decoration: InputDecoration(
+        labelText: 'Confirmar Contraseña',
+        prefixIcon: const Icon(Icons.lock_outline),
+        suffixIcon: IconButton(
+          icon: Icon(_obscureConfirmPassword ? Icons.visibility : Icons.visibility_off),
+          onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+        ),
+        border: const OutlineInputBorder(),
+      ),
+      validator: (value) => AuthValidators.validateConfirmPassword(value, _passwordController.text),
+    );
+  }
+
+  Widget? _buildValidationIcon(bool isValidating, bool isAvailable, bool isChecked) {
+    if (isValidating) {
+      return const SizedBox(
+        width: 20,
+        height: 20,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      );
+    }
+    if (isChecked) {
+      return Icon(
+        isAvailable ? Icons.check_circle : Icons.cancel,
+        color: isAvailable ? Colors.green : Colors.red,
+      );
+    }
+    return null;
+  }
+
+  void _onUsernameChanged() {
+    _usernameDebouncer?.cancel();
+    _usernameDebouncer = Timer(const Duration(milliseconds: 500), () {
+      _checkUsernameAvailability();
+    });
+  }
+
+  void _onEmailChanged() {
+    _emailDebouncer?.cancel();
+    _emailDebouncer = Timer(const Duration(milliseconds: 500), () {
+      _checkEmailAvailability();
+    });
+  }
+
+  Future<void> _checkUsernameAvailability() async {
+    final username = _usuarioController.text;
+    if (username.length < 3) return;
+
+    setState(() {
+      _isValidatingUsername = true;
+      _usernameChecked = false;
+    });
+
+    try {
+      final response = await _authService.checkUsernameAvailability(username);
+      setState(() {
+        _usernameAvailable = response['available'] ?? false;
+        _usernameChecked = true;
+        _isValidatingUsername = false;
+      });
+    } catch (e) {
+      setState(() {
+        _usernameAvailable = false;
+        _usernameChecked = true;
+        _isValidatingUsername = false;
+      });
+    }
+  }
+
+  Future<void> _checkEmailAvailability() async {
+    final email = _emailController.text;
+    if (!email.contains('@')) return;
+
+    setState(() {
+      _isValidatingEmail = true;
+      _emailChecked = false;
+    });
+
+    try {
+      final response = await _authService.checkEmailAvailability(email);
+      setState(() {
+        _emailAvailable = response['available'] ?? false;
+        _emailChecked = true;
+        _isValidatingEmail = false;
+      });
+    } catch (e) {
+      setState(() {
+        _emailAvailable = false;
+        _emailChecked = true;
+        _isValidatingEmail = false;
+      });
+    }
+  }
+
+  bool _canRegister() {
+    return !_isLoading && 
+           _usernameAvailable && 
+           _emailAvailable && 
+           _usernameChecked && 
+           _emailChecked;
+  }
+
+  Future<void> _register() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (!_canRegister()) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final response = await _authService.register(
+        _usuarioController.text,
+        _emailController.text,
+        _passwordController.text,
+      );
+
+      if (response['success'] == true) {
+        _showSuccessDialog();
+      } else {
+        _showErrorDialog(response['message'] ?? 'Error al registrar usuario');
+      }
+    } catch (e) {
+      _showErrorDialog('Error de conexión: ${e.toString()}');
+    }
+
+    setState(() => _isLoading = false);
+  }
+
+  void _showSuccessDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('¡Registro Exitoso!'),
+        content: const Text('Tu cuenta ha sido creada correctamente. Ahora puedes iniciar sesión.'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              Navigator.of(context).pop(); // Volver al login
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Error'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _usernameDebouncer?.cancel();
+    _emailDebouncer?.cancel();
+    _usuarioController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
   }
 }

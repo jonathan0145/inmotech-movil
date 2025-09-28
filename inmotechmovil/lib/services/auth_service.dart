@@ -4,123 +4,284 @@ import 'api_service.dart';
 class AuthService {
   final ApiService _apiService = ApiService.instance;
 
-  // Login con usuario y contraseña
-  Future<Map<String, dynamic>> login(String username, String password) async {
+  // Login de usuario
+  Future<Map<String, dynamic>> login(String usuario, String password) async {
     try {
-      final response = await _apiService.post('/login', data: {
-        'Username': username,
+      final response = await _apiService.post('/auth/login', data: {
+        'usuario': usuario,
         'password': password,
       });
 
-      if (response.data['token'] != null) {
-        // Guardar token automáticamente
-        await _apiService.saveToken(response.data['token']);
-      }
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        // Guardar token si existe
+        final token = response.data['data']?['token'];
+        if (token != null) {
+          await _apiService.saveToken(token);
+        }
 
-      return response.data;
+        return {
+          'success': true,
+          'message': response.data['message'] ?? 'Login exitoso',
+          'data': response.data['data'],
+        };
+      } else {
+        return {
+          'success': false,
+          'message': response.data['message'] ?? 'Credenciales incorrectas',
+        };
+      }
     } on DioException catch (e) {
-      throw _handleError(e);
+      return {
+        'success': false,
+        'message': _handleDioError(e),
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Error inesperado: ${e.toString()}',
+      };
     }
   }
 
-  // Registro de nuevo usuario
-  Future<Map<String, dynamic>> register(String username, String email, String password) async {
+  // Registro de usuario
+  Future<Map<String, dynamic>> register(String usuario, String email, String password) async {
     try {
-      final response = await _apiService.post('/register', data: {
-        'Username': username,
+      final response = await _apiService.post('/auth/register', data: {
+        'usuario': usuario,
         'email': email,
         'password': password,
       });
 
-      return response.data;
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
+      if (response.statusCode == 201 && response.data['success'] == true) {
+        // Guardar token si existe
+        final token = response.data['data']?['token'];
+        if (token != null) {
+          await _apiService.saveToken(token);
+        }
 
-  // Login con Google
-  Future<Map<String, dynamic>> loginWithGoogle(String credential) async {
-    try {
-      final response = await _apiService.post('/google', data: {
-        'credential': credential,
-      });
-
-      if (response.data['token'] != null) {
-        await _apiService.saveToken(response.data['token']);
+        return {
+          'success': true,
+          'message': response.data['message'] ?? 'Usuario registrado exitosamente',
+          'data': response.data['data'],
+        };
+      } else {
+        return {
+          'success': false,
+          'message': response.data['message'] ?? 'Error al registrar usuario',
+        };
       }
-
-      return response.data;
     } on DioException catch (e) {
-      throw _handleError(e);
+      return {
+        'success': false,
+        'message': _handleDioError(e),
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Error inesperado: ${e.toString()}',
+      };
     }
   }
 
-  // Obtener perfil del usuario autenticado
-  Future<Map<String, dynamic>> getProfile() async {
+  // Verificar disponibilidad de nombre de usuario
+  Future<Map<String, dynamic>> checkUsernameAvailability(String username) async {
     try {
-      final response = await _apiService.get('/auth/perfil');
-      return response.data;
+      final response = await _apiService.get('/auth/check-username',
+          queryParameters: {'username': username}
+      );
+
+      if (response.statusCode == 200) {
+        return {
+          'available': response.data['available'] ?? false,
+          'message': response.data['message'] ?? '',
+        };
+      } else {
+        return {
+          'available': false,
+          'message': 'Error al verificar disponibilidad',
+        };
+      }
     } on DioException catch (e) {
-      throw _handleError(e);
+      return {
+        'available': false,
+        'message': _handleDioError(e),
+      };
+    } catch (e) {
+      return {
+        'available': false,
+        'message': 'Error inesperado: ${e.toString()}',
+      };
     }
   }
 
-  // Verificar disponibilidad de usuario
-  Future<bool> checkUsuarioDisponible(String usuario) async {
+  // Verificar disponibilidad de email
+  Future<Map<String, dynamic>> checkEmailAvailability(String email) async {
     try {
-      final response = await _apiService.get('/check-usuario', queryParameters: {
-        'usuario': usuario,
-      });
-      return response.data['disponible'] ?? false;
+      final response = await _apiService.get('/auth/check-email',
+          queryParameters: {'email': email}
+      );
+
+      if (response.statusCode == 200) {
+        return {
+          'available': response.data['available'] ?? false,
+          'message': response.data['message'] ?? '',
+        };
+      } else {
+        return {
+          'available': false,
+          'message': 'Error al verificar disponibilidad',
+        };
+      }
     } on DioException catch (e) {
-      print('Error verificando usuario: ${_handleError(e)}');
-      return false;
+      return {
+        'available': false,
+        'message': _handleDioError(e),
+      };
+    } catch (e) {
+      return {
+        'available': false,
+        'message': 'Error inesperado: ${e.toString()}',
+      };
     }
   }
 
-  // Verificar disponibilidad de correo
-  Future<bool> checkCorreoDisponible(String correo) async {
+  // Logout
+  Future<Map<String, dynamic>> logout() async {
     try {
-      final response = await _apiService.get('/check-correo', queryParameters: {
-        'correo': correo,
-      });
-      return response.data['disponible'] ?? false;
-    } on DioException catch (e) {
-      print('Error verificando correo: ${_handleError(e)}');
-      return false;
+      await _apiService.post('/auth/logout');
+      await _apiService.clearToken();
+
+      return {
+        'success': true,
+        'message': 'Sesión cerrada correctamente',
+      };
+    } catch (e) {
+      // Aunque falle la petición, limpiar token local
+      await _apiService.clearToken();
+      return {
+        'success': true,
+        'message': 'Sesión cerrada correctamente',
+      };
     }
   }
 
-  // Cerrar sesión
-  Future<void> logout() async {
-    await _apiService.clearToken();
-  }
-
-  // Verificar si el usuario está autenticado
+  // Verificar si está autenticado
   Future<bool> isAuthenticated() async {
     return await _apiService.isAuthenticated();
   }
 
-  String _handleError(DioException error) {
-    switch (error.type) {
+  // Obtener información del usuario actual
+  Future<Map<String, dynamic>> getCurrentUser() async {
+    try {
+      final response = await _apiService.get('/auth/me');
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'data': response.data['data'],
+        };
+      } else {
+        return {
+          'success': false,
+          'message': 'No se pudo obtener información del usuario',
+        };
+      }
+    } on DioException catch (e) {
+      return {
+        'success': false,
+        'message': _handleDioError(e),
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Error inesperado: ${e.toString()}',
+      };
+    }
+  }
+
+  // Cambiar contraseña
+  Future<Map<String, dynamic>> changePassword(String currentPassword, String newPassword) async {
+    try {
+      final response = await _apiService.post('/auth/change-password', data: {
+        'currentPassword': currentPassword,
+        'newPassword': newPassword,
+      });
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        return {
+          'success': true,
+          'message': response.data['message'] ?? 'Contraseña cambiada exitosamente',
+        };
+      } else {
+        return {
+          'success': false,
+          'message': response.data['message'] ?? 'Error al cambiar contraseña',
+        };
+      }
+    } on DioException catch (e) {
+      return {
+        'success': false,
+        'message': _handleDioError(e),
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Error inesperado: ${e.toString()}',
+      };
+    }
+  }
+
+  // Recuperar contraseña
+  Future<Map<String, dynamic>> forgotPassword(String email) async {
+    try {
+      final response = await _apiService.post('/auth/forgot-password', data: {
+        'email': email,
+      });
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'message': response.data['message'] ?? 'Correo de recuperación enviado',
+        };
+      } else {
+        return {
+          'success': false,
+          'message': response.data['message'] ?? 'Error al enviar correo de recuperación',
+        };
+      }
+    } on DioException catch (e) {
+      return {
+        'success': false,
+        'message': _handleDioError(e),
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Error inesperado: ${e.toString()}',
+      };
+    }
+  }
+
+  // Manejo de errores de Dio
+  String _handleDioError(DioException e) {
+    switch (e.type) {
       case DioExceptionType.connectionTimeout:
+        return 'Tiempo de conexión agotado';
+      case DioExceptionType.sendTimeout:
+        return 'Tiempo de envío agotado';
       case DioExceptionType.receiveTimeout:
-        return 'Tiempo de conexión agotado. Verifica tu conexión a internet.';
+        return 'Tiempo de respuesta agotado';
       case DioExceptionType.badResponse:
-        if (error.response?.statusCode == 401) {
-          return 'Credenciales incorrectas.';
-        } else if (error.response?.statusCode == 404) {
-          return 'Servicio no encontrado.';
-        } else if (error.response?.statusCode == 500) {
-          return 'Error interno del servidor.';
+        if (e.response?.data is Map && e.response?.data['message'] != null) {
+          return e.response!.data['message'];
         }
-        return error.response?.data['message'] ?? 'Error en la respuesta del servidor.';
+        return 'Error del servidor: ${e.response?.statusCode}';
       case DioExceptionType.cancel:
-        return 'Petición cancelada.';
-      case DioExceptionType.unknown:
-        return 'Error de conexión. Verifica tu conexión a internet.';
+        return 'Petición cancelada';
+      case DioExceptionType.connectionError:
+        return 'Error de conexión. Verifica tu internet';
       default:
-        return 'Error desconocido.';
+        return 'Error de conexión: ${e.message}';
     }
   }
 }
