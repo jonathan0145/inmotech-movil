@@ -100,4 +100,9 @@ class ApiConfig {
   static const String visualizationsEndpoint = '/visualizations';
   static const String terminosEndpoint = '/terminosycondiciones';
   static const String politicaEndpoint = '/politicadeprivacidad';
+  
+  static Future<String> getEndpointUrl(String endpoint) async {
+    final baseUrl = await getApiBaseUrl();
+    return '$baseUrl$endpoint';
+  }
 }

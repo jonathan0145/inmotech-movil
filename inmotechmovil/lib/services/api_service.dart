@@ -24,7 +24,7 @@ class ApiService {
     _currentBaseUrl = await ApiConfig.getApiBaseUrl();
     
     _dio = Dio(BaseOptions(
-      baseUrl: _currentBaseUrl,  // CORREGIDO: baseUrl en lugar de baseURL
+      baseUrl: _currentBaseUrl,
       connectTimeout: Duration(milliseconds: ApiConfig.connectTimeout),
       receiveTimeout: Duration(milliseconds: ApiConfig.receiveTimeout),
       sendTimeout: Duration(milliseconds: ApiConfig.sendTimeout),
