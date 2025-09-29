@@ -239,7 +239,7 @@ class _LoginPageState extends State<LoginPage> {
         if (userRole == 'admin') {
           Navigator.pushReplacementNamed(context, '/admin_dashboard');
         } else {
-          Navigator.pushReplacementNamed(context, '/home');
+          Navigator.pushReplacementNamed(context, '/main'); // ← CAMBIAR '/home' por '/main'
         }
       } else {
         _showErrorDialog(response['message'] ?? 'Error al iniciar sesión');

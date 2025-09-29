@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:dio/dio.dart';
 
 class ApiConfig {
   // URLs base según el escenario
@@ -7,7 +9,8 @@ class ApiConfig {
   
   // Lista de URLs a intentar (orden de prioridad)
   static const List<String> possibleUrls = [
-    'http://localhost:3000/api',           // Desarrollo local (emulador/navegador)
+    'http://localhost:3000/api',           // Desarrollo local
+    'http://192.168.20.21:3000/api',       // Red WiFi casa
     'http://10.226.30.202:3000/api',       // Red WiFi actual
     'http://192.168.20.21:3000/api',       // Red WiFi alternativa
     'https://clypeal-iris-rigoristic.ngrok-free.dev/api',   // ngrok público
@@ -26,38 +29,46 @@ class ApiConfig {
   static Future<String> getApiBaseUrl() async {
     print('🔍 Detectando servidor API disponible...');
     
-    for (String url in possibleUrls) {
-      try {
-        final uri = Uri.parse(url);
-        final available = await _isServerAvailable(uri.host, uri.port);
-        if (available) {
-          print('✅ Servidor encontrado: $url');
-          _logConnectionType(url);
-          return url;
-        } else {
-          print('❌ No disponible: $url');
-        }
-      } catch (e) {
-        print('❌ Error probando $url: $e');
-        continue;
+    // Si estamos en web, usar localhost primero
+    if (kIsWeb) {
+      print('🌐 Ejecutándose en web - probando localhost primero');
+      if (await _testConnection('http://localhost:3000/api')) {
+        print('✅ Servidor encontrado: http://localhost:3000/api');
+        return 'http://localhost:3000/api';
       }
     }
     
-    // Si ninguna funciona, usar la de red como fallback
+    for (String url in possibleUrls) {
+      if (await _testConnection(url)) {
+        print('✅ Servidor encontrado: $url');
+        return url;
+      } else {
+        print('❌ No disponible: $url');
+      }
+    }
+    
+    // Fallback
     print('⚠️ Ningún servidor disponible, usando fallback: $networkBaseUrl');
     return networkBaseUrl;
   }
 
-  // Verificar si un servidor está disponible
-  static Future<bool> _isServerAvailable(String host, int port) async {
+  // Probar conexión a una URL
+  static Future<bool> _testConnection(String url) async {
     try {
-      final socket = await Socket.connect(
-        host, 
-        port, 
-        timeout: const Duration(seconds: 3),
-      );
-      socket.destroy();
-      return true;
+      if (kIsWeb) {
+        // En web, usar fetch API a través de Dio
+        return await _testWebConnection(url);
+      } else {
+        // En móvil, usar Socket
+        final uri = Uri.parse(url);
+        final socket = await Socket.connect(
+          uri.host, 
+          uri.port, 
+          timeout: const Duration(seconds: 3),
+        );
+        socket.destroy();
+        return true;
+      }
     } catch (e) {
       return false;
     }
