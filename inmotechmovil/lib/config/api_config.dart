@@ -1,31 +1,26 @@
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 
 class ApiConfig {
-  // URLs base según el escenario
-  static const String devBaseUrl = 'http://localhost:3000/api';           // Desarrollo local
-  static const String networkBaseUrl = 'http://10.226.30.202:3000/api';  // Red WiFi actual
+  static const String devBaseUrl = 'http://localhost:3000/api';
+  static const String networkBaseUrl = 'http://192.168.20.21:3000/api';
   
-  // Lista de URLs a intentar (orden de prioridad)
   static const List<String> possibleUrls = [
-    'http://localhost:3000/api',           // Desarrollo local
-    'http://192.168.20.21:3000/api',       // Red WiFi casa
-    'http://10.226.30.202:3000/api',       // Red WiFi actual
-    'http://192.168.20.21:3000/api',       // Red WiFi alternativa
-    'https://clypeal-iris-rigoristic.ngrok-free.dev/api',   // ngrok público
+    'http://localhost:3000/api',
+    'http://192.168.20.21:3000/api',
+    'http://10.226.30.202:3000/api',
+    'https://clypeal-iris-rigoristic.ngrok-free.dev/api',
   ];
 
-  static const int connectTimeout = 30000;
-  static const int receiveTimeout = 30000;
-  static const int sendTimeout = 30000;
-  
-  static const Map<String, String> defaultHeaders = {
+  static const int connectTimeout = 5000;
+  static const int receiveTimeout = 5000;
+  static const int sendTimeout = 5000;
+
+  static Map<String, String> get defaultHeaders => {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   };
 
-  // Detectar automáticamente qué URL usar
   static Future<String> getApiBaseUrl() async {
     print('🔍 Detectando servidor API disponible...');
     
@@ -47,73 +42,63 @@ class ApiConfig {
       }
     }
     
-    // Fallback
     print('⚠️ Ningún servidor disponible, usando fallback: $networkBaseUrl');
     return networkBaseUrl;
   }
 
-  // Probar conexión a una URL
   static Future<bool> _testConnection(String url) async {
     try {
-      if (kIsWeb) {
-        // En web, usar fetch API a través de Dio
-        return await _testWebConnection(url);
-      } else {
-        // En móvil, usar Socket
-        final uri = Uri.parse(url);
-        final socket = await Socket.connect(
-          uri.host, 
-          uri.port, 
-          timeout: const Duration(seconds: 3),
-        );
-        socket.destroy();
-        return true;
-      }
+      final dio = Dio();
+      final response = await dio.get(
+        '$url/test',
+        options: Options(
+          sendTimeout: const Duration(seconds: 3),
+          receiveTimeout: const Duration(seconds: 3),
+        ),
+      );
+      return response.statusCode == 200;
     } catch (e) {
       return false;
     }
   }
 
-  // Log del tipo de conexión
-  static void _logConnectionType(String url) {
-    if (url.contains('localhost') || url.contains('127.0.0.1')) {
-      print('🔧 Modo: DESARROLLO LOCAL');
-    } else if (url.contains('10.226.30.202')) {
-      print('🏠 Modo: RED WiFi ACTUAL');
-    } else if (url.contains('192.168.20.21')) {
-      print('🏠 Modo: RED WiFi ALTERNATIVA');
-    } else if (url.contains('ngrok-free.dev') || url.contains('ngrok.io')) {
-      print('🌐 Modo: PÚBLICO (ngrok)');
-    } else {
-      print('❓ Modo: DESCONOCIDO');
-    }
-  }
-
-  // Obtener tipo de conexión para mostrar en UI
   static String getConnectionType(String url) {
     if (url.contains('localhost') || url.contains('127.0.0.1')) {
-      return '🔧 Local';
-    } else if (url.contains('10.226.30.202')) {
-      return '🏠 WiFi';
-    } else if (url.contains('192.168.20.21')) {
-      return '🏠 WiFi Casa';
-    } else if (url.contains('ngrok-free.dev') || url.contains('ngrok.io')) {
-      return '🌐 Público';
+      return '🔧 Desarrollo';
+    } else if (url.contains('192.168.') || url.contains('10.')) {
+      return '🌐 WiFi Local';
+    } else if (url.contains('ngrok')) {
+      return '🌍 Público';
     } else {
-      return '❓ Desconocido';
+      return '🌐 Red';
     }
   }
+}
 
-  // Endpoints
-  static const String authEndpoint = '/auth';
-  static const String inmueblesEndpoint = '/inmuebles';
-  static const String platformProfileEndpoint = '/platformprofile';
-  static const String visualizationsEndpoint = '/visualizations';
-  static const String terminosEndpoint = '/terminosycondiciones';
-  static const String politicaEndpoint = '/politicadeprivacidad';
-  
-  static Future<String> getEndpointUrl(String endpoint) async {
-    final baseUrl = await getApiBaseUrl();
-    return '$baseUrl$endpoint';
+class ApiService {
+  final Dio _dio = Dio();
+
+  // ... otros métodos de ApiService
+
+  Future<Response> postMultipart(String endpoint, FormData formData) async {
+    try {
+      print('📤 POST Multipart $endpoint');
+      
+      final response = await _dio.post(
+        endpoint,
+        data: formData,
+        options: Options(
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        ),
+      );
+      
+      print('📡 Status: ${response.statusCode}');
+      return response;
+    } catch (e) {
+      print('❌ Error en postMultipart: $e');
+      rethrow;
+    }
   }
 }

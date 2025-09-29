@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../services/api_service.dart';
-import '../config/api_config.dart';
+import 'package:inmotechmovil/config/api_config.dart' as config;
+import 'package:inmotechmovil/services/api_service.dart';
 
 class ConnectionStatusWidget extends StatefulWidget {
   const ConnectionStatusWidget({Key? key}) : super(key: key);
@@ -15,32 +15,34 @@ class _ConnectionStatusWidgetState extends State<ConnectionStatusWidget> {
   String _currentUrl = '';
   String _connectionType = '';
 
+  late final ApiService _apiService;
+
   @override
   void initState() {
     super.initState();
-    _checkConnection();
+    _apiService = ApiService.instance;
+    _loadConnectionStatus();
   }
 
-  Future<void> _checkConnection() async {
+  Future<void> _loadConnectionStatus() async {
     setState(() => _isChecking = true);
-    
+
     try {
-      final apiService = ApiService.instance;
-      await apiService.initialize();
-      _currentUrl = apiService.currentBaseUrl;
-      _connectionType = ApiConfig.getConnectionType(_currentUrl);
-      _isConnected = await apiService.isConnected();
+      await _apiService.initialize();
+      _currentUrl = _apiService.currentBaseUrl;
+      _connectionType = config.ApiConfig.getConnectionType(_currentUrl);
+      _isConnected = await _apiService.isConnected();
     } catch (e) {
       _isConnected = false;
       _connectionType = '❌ Error';
     }
-    
+
     setState(() => _isChecking = false);
   }
 
   Future<void> _reconnect() async {
-    await ApiService.instance.reconnect();
-    await _checkConnection();
+    await _apiService.reconnect();
+    await _loadConnectionStatus();
   }
 
   @override
@@ -67,20 +69,20 @@ class _ConnectionStatusWidgetState extends State<ConnectionStatusWidget> {
         ),
       );
     }
-    
+
     return GestureDetector(
       onTap: _reconnect,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: _isConnected 
-            ? Colors.green.withOpacity(0.1)
-            : Colors.red.withOpacity(0.1),
+          color: _isConnected
+              ? Colors.green.withOpacity(0.1)
+              : Colors.red.withOpacity(0.1),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: _isConnected 
-              ? Colors.green.withOpacity(0.3)
-              : Colors.red.withOpacity(0.3),
+            color: _isConnected
+                ? Colors.green.withOpacity(0.3)
+                : Colors.red.withOpacity(0.3),
           ),
         ),
         child: Row(

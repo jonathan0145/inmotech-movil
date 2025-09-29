@@ -145,4 +145,55 @@ class ApiService {
     final token = await getToken();
     return token != null && token.isNotEmpty;
   }
+
+  // POST Multipart
+  Future<Response> postMultipart(String endpoint, FormData formData) async {
+    try {
+      print('📤 POST Multipart $endpoint');
+      
+      final response = await _dio.post(
+        endpoint,
+        data: formData,
+        options: Options(
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+          sendTimeout: const Duration(minutes: 5), // Tiempo extra para archivos
+          receiveTimeout: const Duration(minutes: 5),
+        ),
+      );
+      
+      print('📡 Status: ${response.statusCode}');
+      print('📄 Response: ${response.data}');
+      return response;
+    } catch (e) {
+      print('❌ Error en postMultipart: $e');
+      rethrow;
+    }
+  }
+
+  // PUT Multipart
+  Future<Response> putMultipart(String endpoint, FormData formData) async {
+    try {
+      print('📤 PUT Multipart $endpoint');
+      
+      final response = await _dio.put(
+        endpoint,
+        data: formData,
+        options: Options(
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+          sendTimeout: const Duration(minutes: 5),
+          receiveTimeout: const Duration(minutes: 5),
+        ),
+      );
+      
+      print('📡 Status: ${response.statusCode}');
+      return response;
+    } catch (e) {
+      print('❌ Error en putMultipart: $e');
+      rethrow;
+    }
+  }
 }
