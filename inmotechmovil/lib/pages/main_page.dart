@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import '../widgets/app_drawer.dart';
+import '../utils/drawer_sections.dart';  // ← IMPORTAR
 import 'perfil_page.dart';
 import 'inmuebles_page.dart';
 import 'comunicacion_page.dart';
-
-enum DrawerSection { perfil, inmuebles, comunicacion }
+import 'favoritos_page.dart';
+import 'publicados_page.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({Key? key}) : super(key: key);
@@ -22,6 +23,10 @@ class _MainPageState extends State<MainPage> {
         return const PerfilPage();
       case DrawerSection.inmuebles:
         return const InmueblesPage();
+      case DrawerSection.favoritos:
+        return const FavoritosPage();
+      case DrawerSection.publicados:
+        return const PublicadosPage();
       case DrawerSection.comunicacion:
         return const ComunicacionPage();
     }

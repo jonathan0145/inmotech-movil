@@ -1,72 +1,68 @@
 import 'package:flutter/material.dart';
 import '../models/inmueble.dart';
-import 'chat_page.dart'; // Asegúrate de tener este archivo creado
+import '../widgets/detalle_inmueble_widget.dart';
 
 class DetalleInmueblePage extends StatelessWidget {
   final Inmueble inmueble;
+  final bool isOwner;
 
-  const DetalleInmueblePage({Key? key, required this.inmueble}) : super(key: key);
+  const DetalleInmueblePage({
+    Key? key,
+    required this.inmueble,
+    this.isOwner = false,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: Text('Detalle del Inmueble'),
+        title: const Text('Detalle del Inmueble'),
+        backgroundColor: const Color(0xFF15365F),
+        foregroundColor: Colors.white,
+        elevation: 0,
+        actions: [
+          IconButton(
+            onPressed: () => _shareInmueble(context),
+            icon: const Icon(Icons.share),
+          ),
+        ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              height: 220,
-              child: PageView.builder(
-                itemCount: inmueble.imagenes.length,
-                itemBuilder: (context, index) {
-                  return ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      inmueble.imagenes[index],
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              inmueble.descripcion,
-              style: const TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 16),
-            Text('Área: ${inmueble.area} m²'),
-            Text('Terreno: ${inmueble.terreno} m²'),
-            Text('Habitaciones: ${inmueble.habitaciones}'),
-            Text('Baños: ${inmueble.banos}'),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.chat_bubble_outline),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ChatPage(
-                          name: 'Propietario', // Cambia por el nombre real si lo tienes
-                          avatar: 'https://randomuser.me/api/portraits/men/1.jpg', // Cambia por el avatar real si lo tienes
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                // Puedes agregar más iconos aquí si lo deseas
-              ],
-            ),
-          ],
-        ),
+      body: DetalleInmuebleWidget(
+        inmueble: inmueble,
+        showEditButton: isOwner,
+        onEdit: () => _editInmueble(context),
+        onDelete: () => _deleteInmueble(context),
       ),
     );
+  }
+
+  void _shareInmueble(BuildContext context) {
+    // Implementar compartir inmueble
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Función de compartir próximamente'),
+        backgroundColor: Color(0xFF1C56A7),
+      ),
+    );
+  }
+
+  void _editInmueble(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Función de editar próximamente'),
+        backgroundColor: Colors.orange,
+      ),
+    );
+  }
+
+  void _deleteInmueble(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Inmueble eliminado'),
+        backgroundColor: Colors.red,
+      ),
+    );
+    Navigator.pop(context);
   }
 }

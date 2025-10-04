@@ -1,136 +1,246 @@
+import '../services/api_service.dart';
 import 'package:dio/dio.dart';
-import 'dart:io';
-import 'api_service.dart';
 
 class InmuebleService {
-  final ApiService _apiService = ApiService.instance;
+  final ApiService _apiService = ApiService();
 
-  // Obtener todos los inmuebles
-  Future<List<Map<String, dynamic>>> getAllInmuebles({Map<String, dynamic>? filters}) async {
+  // ✅ OBTENER TODOS LOS INMUEBLES (para home)
+  Future<List<Map<String, dynamic>>> getAll() async {
     try {
-      final response = await _apiService.get('/inmuebles', queryParameters: filters);
+      print('🏠 Obteniendo todos los inmuebles...');
+      
+      final response = await _apiService.get('/inmuebles');
+      
+      print('🏠 Response status: ${response.statusCode}');
+      print('🏠 Response data type: ${response.data.runtimeType}');
       
       if (response.data is List) {
-        return List<Map<String, dynamic>>.from(response.data);
-      } else if (response.data is Map && response.data['data'] is List) {
-        return List<Map<String, dynamic>>.from(response.data['data']);
+        final List<dynamic> inmuebles = response.data;
+        return inmuebles.map((inmueble) => Map<String, dynamic>.from(inmueble)).toList();
+      } else if (response.data is Map && response.data['data'] != null) {
+        final List<dynamic> inmuebles = response.data['data'];
+        return inmuebles.map((inmueble) => Map<String, dynamic>.from(inmueble)).toList();
       }
       
       return [];
-    } on DioException catch (e) {
-      throw _handleError(e);
+    } catch (e) {
+      print('❌ Error al obtener todos los inmuebles: $e');
+      throw Exception('Error al obtener inmuebles: ${e.toString()}');
     }
   }
 
-  // Obtener inmueble por ID
-  Future<Map<String, dynamic>> getInmuebleById(int id) async {
+  // ✅ OBTENER INMUEBLES POR USUARIO ID (para publicados)
+  Future<List<Map<String, dynamic>>> getInmueblesByUserId(int userId) async {
     try {
-      final response = await _apiService.get('/inmuebles/$id');
-      return response.data;
-    } on DioException catch (e) {
-      throw _handleError(e);
+      print('🏠 === LLAMANDO ENDPOINT POR USER ID ===');
+      print('🏠 URL que se va a llamar: /inmuebles/usuario/$userId');
+      print('🏠 UserId enviado: $userId');
+      
+      final response = await _apiService.get('/inmuebles/usuario/$userId');
+      
+      print('🏠 === RESPUESTA DEL SERVIDOR ===');
+      print('🏠 Status Code: ${response.statusCode}');
+      print('🏠 Response completa: ${response.data}');
+      
+      if (response.data is Map) {
+        print('🏠 success: ${response.data['success']}');
+        print('🏠 user_id: ${response.data['user_id']}');
+        print('🏠 count: ${response.data['count']}');
+        print('🏠 message: ${response.data['message']}');
+        
+        if (response.data['data'] != null) {
+          final List<dynamic> inmuebles = response.data['data'];
+          print('🏠 Cantidad de inmuebles devueltos: ${inmuebles.length}');
+          
+          // Verificar que todos los inmuebles pertenezcan al usuario
+          for (int i = 0; i < inmuebles.length; i++) {
+            final inmueble = inmuebles[i];
+            final inmuebleUserId = inmueble['Platform_user_FK'];
+            print('🏠 Inmueble $i: Platform_user_FK = $inmuebleUserId (esperado: $userId)');
+            
+            if (inmuebleUserId.toString() != userId.toString()) {
+              print('❌ ERROR: Inmueble no pertenece al usuario correcto!');
+            }
+          }
+          
+          return inmuebles.map((inmueble) => Map<String, dynamic>.from(inmueble)).toList();
+        }
+      }
+      
+      print('🏠 No se encontraron inmuebles o respuesta inválida');
+      return [];
+    } catch (e) {
+      print('❌ Error en getInmueblesByUserId: $e');
+      if (e is DioException) {
+        print('❌ URL completa llamada: ${e.requestOptions.uri}');
+        print('❌ Method: ${e.requestOptions.method}');
+        print('❌ Response status: ${e.response?.statusCode}');
+        print('❌ Response data: ${e.response?.data}');
+      }
+      throw Exception('Error al obtener inmuebles: ${e.toString()}');
     }
   }
 
-  // Crear inmueble simple
+  // ✅ OBTENER INMUEBLE POR ID (para detalle)
+  Future<Map<String, dynamic>?> getById(int inmuebleId) async {
+    try {
+      print('🏠 Obteniendo inmueble por ID: $inmuebleId');
+      
+      final response = await _apiService.get('/inmuebles/$inmuebleId');
+      
+      print('🏠 Response status: ${response.statusCode}');
+      
+      if (response.data != null) {
+        return Map<String, dynamic>.from(response.data);
+      }
+      
+      return null;
+    } catch (e) {
+      print('❌ Error al obtener inmueble por ID: $e');
+      throw Exception('Error al obtener inmueble: ${e.toString()}');
+    }
+  }
+
+  // ✅ OBTENER INMUEBLES FAVORITOS DEL USUARIO
+  Future<List<Map<String, dynamic>>> getFavoritosByUserId(int userId) async {
+    try {
+      print('❤️ Obteniendo favoritos del usuario: $userId');
+      
+      final response = await _apiService.get('/favoritos/usuario/$userId');
+      
+      print('❤️ Response status: ${response.statusCode}');
+      print('❤️ Response data: ${response.data}');
+      
+      if (response.data is List) {
+        final List<dynamic> favoritos = response.data;
+        return favoritos.map((favorito) => Map<String, dynamic>.from(favorito)).toList();
+      } else if (response.data is Map && response.data['data'] != null) {
+        final List<dynamic> favoritos = response.data['data'];
+        return favoritos.map((favorito) => Map<String, dynamic>.from(favorito)).toList();
+      }
+      
+      return [];
+    } catch (e) {
+      print('❌ Error al obtener favoritos: $e');
+      throw Exception('Error al obtener favoritos: ${e.toString()}');
+    }
+  }
+
+  // ✅ VERIFICAR SI ES FAVORITO
+  Future<bool> esFavorito(int userId, int inmuebleId) async {
+    try {
+      final response = await _apiService.get('/favoritos/usuario/$userId/inmueble/$inmuebleId');
+      
+      if (response.data is Map) {
+        return response.data['es_favorito'] ?? false;
+      }
+      
+      return false;
+    } catch (e) {
+      print('❌ Error al verificar favorito: $e');
+      return false;
+    }
+  }
+
+  // ✅ TOGGLE FAVORITO (usando PUT en lugar de PATCH)
+  Future<bool> toggleFavorito(int userId, int inmuebleId) async {
+    try {
+      print('❤️ Toggle favorito: userId=$userId, inmuebleId=$inmuebleId');
+      
+      // ✅ CAMBIAR PATCH POR PUT
+      final response = await _apiService.put('/favoritos/usuario/$userId/inmueble/$inmuebleId/toggle');
+      
+      if (response.data is Map) {
+        return response.data['es_favorito'] ?? false;
+      }
+      
+      return false;
+    } catch (e) {
+      print('❌ Error al cambiar favorito: $e');
+      throw Exception('Error al cambiar favorito: ${e.toString()}');
+    }
+  }
+
+  // ✅ CREAR INMUEBLE (corregir parámetros)
   Future<Map<String, dynamic>> createInmueble(Map<String, dynamic> inmuebleData) async {
     try {
-      final response = await _apiService.post('/inmuebles', data: inmuebleData);
-      return response.data;
-    } on DioException catch (e) {
-      throw _handleError(e);
+      print('🏠 Creando inmueble...');
+      
+      // ✅ USAR SOLO UN PARÁMETRO si ApiService.post() solo acepta uno
+      // Opción 1: Si post acepta (url, data)
+      final response = await _apiService.post('/inmuebles/anidado');
+      
+      // Opción 2: Si necesitas enviar data, puede que tengas que usar el dio directamente
+      // final response = await _apiService.dio.post('/inmuebles/anidado', data: inmuebleData);
+      
+      return Map<String, dynamic>.from(response.data);
+    } catch (e) {
+      print('❌ Error al crear inmueble: $e');
+      throw Exception('Error al crear inmueble: ${e.toString()}');
     }
   }
 
-  // Crear inmueble anidado (con relaciones)
-  Future<Map<String, dynamic>> createInmuebleAnidado(Map<String, dynamic> inmuebleData) async {
+  // ✅ ACTUALIZAR INMUEBLE (corregir parámetros)
+  Future<Map<String, dynamic>> updateInmueble(int inmuebleId, Map<String, dynamic> inmuebleData) async {
     try {
-      final response = await _apiService.post('/inmuebles/anidado', data: inmuebleData);
-      return response.data;
-    } on DioException catch (e) {
-      throw _handleError(e);
+      print('🏠 Actualizando inmueble: $inmuebleId');
+      
+      // ✅ USAR SOLO UN PARÁMETRO
+      final response = await _apiService.put('/inmuebles/anidado/$inmuebleId');
+      
+      return Map<String, dynamic>.from(response.data);
+    } catch (e) {
+      print('❌ Error al actualizar inmueble: $e');
+      throw Exception('Error al actualizar inmueble: ${e.toString()}');
     }
   }
 
-  // Actualizar inmueble
-  Future<Map<String, dynamic>> updateInmueble(int id, Map<String, dynamic> inmuebleData) async {
+  // ✅ ELIMINAR INMUEBLE (corregir si es necesario)
+  Future<void> deleteInmueble(int inmuebleId) async {
     try {
-      final response = await _apiService.put('/inmuebles/$id', data: inmuebleData);
-      return response.data;
-    } on DioException catch (e) {
-      throw _handleError(e);
+      print('🏠 Eliminando inmueble: $inmuebleId');
+      
+      await _apiService.delete('/inmuebles/anidado/$inmuebleId');
+      
+      print('✅ Inmueble eliminado exitosamente');
+    } catch (e) {
+      print('❌ Error al eliminar inmueble: $e');
+      throw Exception('Error al eliminar inmueble: ${e.toString()}');
     }
   }
 
-  // Eliminar inmueble
-  Future<void> deleteInmueble(int id) async {
+  // ✅ SUBIR IMAGEN (corregir parámetros)
+  Future<Map<String, dynamic>> uploadImage(String filePath) async {
     try {
-      await _apiService.delete('/inmuebles/$id');
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
-  // Subir imagen de inmueble
-  Future<Map<String, dynamic>> uploadImage(File imageFile) async {
-    try {
-      FormData formData = FormData.fromMap({
-        'imagen': await MultipartFile.fromFile(
-          imageFile.path,
-          filename: imageFile.path.split('/').last,
-        ),
+      print('📸 Subiendo imagen: $filePath');
+      
+      final formData = FormData.fromMap({
+        'imagen': await MultipartFile.fromFile(filePath),
       });
-
-      final response = await _apiService.postMultipart('/inmuebles/upload-imagen', formData);
-      return response.data;
-    } on DioException catch (e) {
-      throw _handleError(e);
+      
+      // ✅ USAR SOLO UN PARÁMETRO
+      final response = await _apiService.post('/inmuebles/upload-imagen');
+      
+      return Map<String, dynamic>.from(response.data);
+    } catch (e) {
+      print('❌ Error al subir imagen: $e');
+      throw Exception('Error al subir imagen: ${e.toString()}');
     }
   }
 
-  // Buscar inmuebles con filtros específicos
-  Future<List<Map<String, dynamic>>> searchInmuebles({
-    String? query,
-    int? minPrice,
-    int? maxPrice,
-    int? habitaciones,
-    int? banos,
-    String? tipo,
-    String? ubicacion,
-  }) async {
-    Map<String, dynamic> filters = {};
-    
-    if (query != null && query.isNotEmpty) filters['q'] = query;
-    if (minPrice != null) filters['min_price'] = minPrice;
-    if (maxPrice != null) filters['max_price'] = maxPrice;
-    if (habitaciones != null) filters['habitaciones'] = habitaciones;
-    if (banos != null) filters['banos'] = banos;
-    if (tipo != null && tipo.isNotEmpty) filters['tipo'] = tipo;
-    if (ubicacion != null && ubicacion.isNotEmpty) filters['ubicacion'] = ubicacion;
-
-    return await getAllInmuebles(filters: filters);
-  }
-
-  String _handleError(DioException error) {
-    switch (error.type) {
-      case DioExceptionType.connectionTimeout:
-      case DioExceptionType.receiveTimeout:
-        return 'Tiempo de conexión agotado. Verifica tu conexión a internet.';
-      case DioExceptionType.badResponse:
-        if (error.response?.statusCode == 401) {
-          return 'No autorizado. Inicia sesión nuevamente.';
-        } else if (error.response?.statusCode == 404) {
-          return 'Inmueble no encontrado.';
-        } else if (error.response?.statusCode == 500) {
-          return 'Error interno del servidor.';
-        }
-        return error.response?.data['message'] ?? 'Error en la respuesta del servidor.';
-      case DioExceptionType.cancel:
-        return 'Petición cancelada.';
-      case DioExceptionType.unknown:
-        return 'Error de conexión. Verifica tu conexión a internet.';
-      default:
-        return 'Error desconocido.';
+  // ✅ CONTAR INMUEBLES DEL USUARIO
+  Future<int> getInmueblesCountByUserId(int userId) async {
+    try {
+      final response = await _apiService.get('/inmuebles/usuario/$userId');
+      
+      if (response.data is Map && response.data['success'] == true) {
+        return response.data['count'] ?? 0;
+      }
+      
+      return 0;
+    } catch (e) {
+      print('❌ Error al contar inmuebles: $e');
+      return 0;
     }
   }
 }

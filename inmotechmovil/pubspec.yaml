@@ -44,6 +44,12 @@ dependencies:
   # JSON serialization
   json_annotation: ^4.9.0
 
+  # Image picking
+  image_picker: ^1.0.4
+
+  # URL launching
+  url_launcher: ^6.2.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

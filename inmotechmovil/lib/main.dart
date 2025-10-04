@@ -24,6 +24,7 @@ import 'pages/loading_page.dart';
 import 'pages/auth/login.dart';
 import 'pages/auth/register.dart';
 import 'pages/main_page.dart';
+import 'pages/profile_page.dart';
 
 void main() {
   runApp(const InmotechApp());
@@ -36,7 +37,7 @@ class InmotechApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'INMOTECH',
-      theme: ThemeData.dark(), // ← RESTAURÉ TU TEMA OSCURO
+      theme: ThemeData.dark(),
       debugShowCheckedModeBanner: false,
       initialRoute: '/loading',
       routes: {
@@ -44,8 +45,8 @@ class InmotechApp extends StatelessWidget {
         '/login': (context) => const LoginPage(),
         '/register': (context) => const RegisterPage(),
         '/main': (context) => const MainPage(),
+        '/profile': (context) => const ProfilePage(),
       },
     );
   }
 }
-//* hola
