@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/inmueble_service.dart';
-import '../models/inmueble.dart';
 import 'detalle_inmueble_page.dart';
 
 class FavoritosPage extends StatefulWidget {
@@ -386,7 +385,36 @@ class _FavoritosPageState extends State<FavoritosPage> with TickerProviderStateM
                   borderRadius: BorderRadius.circular(15),
                 ),
                 child: InkWell(
-                  onTap: () => _navigateToDetail(inmuebleData),
+                  onTap: () {
+                    // ❌ ANTES (línea 394):
+                    // final inmueble = _favoritos[index];
+                    // Navigator.push(
+                    //   context,
+                    //   MaterialPageRoute(
+                    //     builder: (context) => DetalleInmueblePage(inmuebleId: inmueble.id!),
+                    //   ),
+                    // );
+
+                    // ✅ DESPUÉS - EXTRAER EL ID DEL MAP:
+                    final inmuebleData = _favoritos[index];
+                    final inmuebleId = inmuebleData['Inmueble_id'] ?? inmuebleData['id'] ?? inmuebleData['ID'];
+                    
+                    if (inmuebleId != null) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => DetalleInmueblePage(inmuebleId: inmuebleId),
+                        ),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Error: ID del inmueble no encontrado'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  },
                   borderRadius: BorderRadius.circular(15),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -674,23 +702,6 @@ class _FavoritosPageState extends State<FavoritosPage> with TickerProviderStateM
         ],
       ),
     );
-  }
-
-  void _navigateToDetail(Map<String, dynamic> inmuebleData) {
-    try {
-      final inmueble = Inmueble.fromJson(inmuebleData);
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => DetalleInmueblePage(
-            inmueble: inmueble,
-            isOwner: false,
-          ),
-        ),
-      );
-    } catch (e) {
-      _showErrorSnackBar('Error al abrir detalles: ${e.toString()}');
-    }
   }
 
   Future<void> _toggleFavorito(Map<String, dynamic> inmuebleData) async {

@@ -410,7 +410,36 @@ class _InmueblesPageState extends State<InmueblesPage>
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
-        onTap: () => _navigateToDetail(inmuebleData),
+        onTap: () {
+          // ❌ ANTES (líneas 595-596):
+          // Navigator.push(
+          //   context,
+          //   MaterialPageRoute(
+          //     builder: (context) => DetalleInmueblePage(inmuebleId: inmuebleData['id']!),
+          //   ),
+          // );
+
+          // ✅ DESPUÉS - USAR LA CLAVE CORRECTA:
+          final inmuebleId = inmuebleData['Inmueble_id'] ?? 
+                            inmuebleData['id'] ?? 
+                            inmuebleData['ID'];
+                          
+          if (inmuebleId != null) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => DetalleInmueblePage(inmuebleId: inmuebleId),
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Error: ID del inmueble no encontrado'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        },
         borderRadius: BorderRadius.circular(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -580,19 +609,23 @@ class _InmueblesPageState extends State<InmueblesPage>
   }
 
   void _navigateToDetail(Map<String, dynamic> inmuebleData) {
-    try {
-      final inmueble = Inmueble.fromJson(inmuebleData);
+    // ✅ USAR EL NUEVO CONSTRUCTOR CON inmuebleId
+    final inmuebleId = inmuebleData['Inmueble_id'] ?? 
+                      inmuebleData['id'] ?? 
+                      inmuebleData['ID'];
+                      
+    if (inmuebleId != null) {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => DetalleInmueblePage(
-            inmueble: inmueble,
+          builder: (context) => DetalleInmueblePage(
+            inmuebleId: inmuebleId,
             isOwner: _publicaciones.any((p) => p['Inmueble_id'] == inmuebleData['Inmueble_id']),
           ),
         ),
       );
-    } catch (e) {
-      _showError('Error al abrir detalle: ${e.toString()}');
+    } else {
+      _showError('Error: ID del inmueble no encontrado');
     }
   }
 

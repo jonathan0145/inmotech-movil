@@ -456,17 +456,24 @@ class _PublicadosPageState extends State<PublicadosPage> {
     try {
       print('🏠 Navegando al detalle del inmueble: ${inmuebleData['Inmueble_id']}');
       
-      final inmueble = Inmueble.fromJson(inmuebleData);
+      // ✅ USAR EL NUEVO CONSTRUCTOR CON inmuebleId
+      final inmuebleId = inmuebleData['Inmueble_id'] ?? 
+                        inmuebleData['id'] ?? 
+                        inmuebleData['ID'];
       
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => DetalleInmueblePage(
-            inmueble: inmueble,
-            isOwner: true, // En publicados, SÍ es el dueño
+      if (inmuebleId != null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DetalleInmueblePage(
+              inmuebleId: inmuebleId,
+              isOwner: true, // En publicados, SÍ es el dueño
+            ),
           ),
-        ),
-      );
+        );
+      } else {
+        throw Exception('ID del inmueble no encontrado');
+      }
     } catch (e) {
       print('❌ Error al navegar al detalle: $e');
       ScaffoldMessenger.of(context).showSnackBar(

@@ -340,12 +340,15 @@ class _HomePageState extends State<HomePage> {
       
       final inmueble = Inmueble.fromJson(inmuebleData);
       
+      // Navegación corregida según el tipo de dato
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => DetalleInmueblePage(
-            inmueble: inmueble,
-            isOwner: false,
+            inmuebleId: inmuebleData['Inmueble_id'] ?? 
+                        inmuebleData['id'] ?? 
+                        inmuebleData['ID'] ?? 
+                        inmuebleData['inmueble_id'],
           ),
         ),
       );

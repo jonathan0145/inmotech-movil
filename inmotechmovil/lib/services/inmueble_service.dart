@@ -242,4 +242,25 @@ class InmuebleService {
       return 0;
     }
   }
+
+  // NUEVO MÉTODO: OBTENER INFORMACIÓN COMPLETA DEL INMUEBLE
+  Future<Map<String, dynamic>> getCompleto(int id) async {
+    try {
+      print('🔍 Obteniendo información completa del inmueble: $id');
+      
+      final response = await _apiService.get('/inmueble/completo/$id');
+      
+      print('📡 Status getCompleto: ${response.statusCode}');
+      print('📄 Data getCompleto: ${response.data}');
+      
+      if (response.statusCode == 200 && response.data != null) {
+        return response.data as Map<String, dynamic>;
+      } else {
+        throw Exception('Error obteniendo información completa del inmueble');
+      }
+    } catch (e) {
+      print('❌ Error en getCompleto: $e');
+      throw Exception('Error obteniendo información completa: ${e.toString()}');
+    }
+  }
 }

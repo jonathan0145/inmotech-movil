@@ -369,10 +369,7 @@ class InmuebleCard extends StatelessWidget {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => DetalleInmueblePage(
-            inmueble: inmueble,
-            isOwner: isOwner,
-          ),
+          builder: (context) => DetalleInmueblePage(inmuebleId: inmueble.id!),
         ),
       );
     } catch (e) {
