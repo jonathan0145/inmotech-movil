@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'dart:async';
+import 'dart:async'; // ✅ AGREGAR ESTE IMPORT PARA Timer
 import '../../services/auth_service.dart';
 import '../../utils/auth_validators.dart';
 import '../../config/app_colors.dart';
@@ -27,17 +27,27 @@ class _RegisterPageState extends State<RegisterPage> {
   // Estados de validación en tiempo real
   bool _isValidatingUsername = false;
   bool _isValidatingEmail = false;
-  bool _usernameAvailable = false;
-  bool _emailAvailable = false;
+  bool? _usernameAvailable;
+  bool? _emailAvailable;
   bool _usernameChecked = false;
   bool _emailChecked = false;
   
   Timer? _usernameDebouncer;
   Timer? _emailDebouncer;
+  Timer? _usernameTimer;
+  Timer? _emailTimer;
+
+  // ✅ AGREGAR ESTAS VARIABLES PARA VERIFICACIÓN
+  bool _checkingUsername = false;
+  bool _checkingEmail = false;
+  String _usernameMessage = '';
+  String _emailMessage = '';
 
   @override
   void initState() {
     super.initState();
+    
+    // ✅ AGREGAR ESTOS LISTENERS
     _usuarioController.addListener(_onUsernameChanged);
     _emailController.addListener(_onEmailChanged);
   }
@@ -243,7 +253,7 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  Widget? _buildValidationIcon(bool isValidating, bool isAvailable, bool isChecked) {
+  Widget? _buildValidationIcon(bool isValidating, bool? isAvailable, bool isChecked) {
     if (isValidating) {
       return const SizedBox(
         width: 20,
@@ -253,81 +263,103 @@ class _RegisterPageState extends State<RegisterPage> {
     }
     if (isChecked) {
       return Icon(
-        isAvailable ? Icons.check_circle : Icons.cancel,
-        color: isAvailable ? Colors.green : Colors.red,
+        isAvailable! ? Icons.check_circle : Icons.cancel,
+        color: isAvailable! ? Colors.green : Colors.red,
       );
     }
     return null;
   }
 
   void _onUsernameChanged() {
-    _usernameDebouncer?.cancel();
-    _usernameDebouncer = Timer(const Duration(milliseconds: 500), () {
-      _checkUsernameAvailability();
+    _usernameTimer?.cancel();
+    _usernameTimer = Timer(const Duration(milliseconds: 800), () {
+      if (_usuarioController.text.isNotEmpty) {
+        _checkUsernameAvailability(_usuarioController.text);
+      }
     });
   }
 
   void _onEmailChanged() {
-    _emailDebouncer?.cancel();
-    _emailDebouncer = Timer(const Duration(milliseconds: 500), () {
-      _checkEmailAvailability();
+    _emailTimer?.cancel();
+    _emailTimer = Timer(const Duration(milliseconds: 800), () {
+      if (_emailController.text.isNotEmpty) {
+        _checkEmailAvailability(_emailController.text);
+      }
     });
   }
 
-  Future<void> _checkUsernameAvailability() async {
-    final username = _usuarioController.text;
-    if (username.length < 3) return;
+  Future<void> _checkUsernameAvailability(String username) async {
+    if (username.length < 3) {
+      setState(() {
+        _usernameAvailable = null;
+        _usernameMessage = '';
+      });
+      return;
+    }
 
     setState(() {
-      _isValidatingUsername = true;
-      _usernameChecked = false;
+      _checkingUsername = true;
+      _usernameMessage = 'Verificando disponibilidad...';
     });
 
     try {
-      final response = await _authService.checkUsernameAvailability(username);
+      // ✅ EL MÉTODO RETORNA bool DIRECTAMENTE
+      final isAvailable = await _authService.checkUsernameAvailability(username);
+      
       setState(() {
-        _usernameAvailable = response['available'] ?? false;
-        _usernameChecked = true;
-        _isValidatingUsername = false;
+        _usernameAvailable = isAvailable;
+        _usernameMessage = isAvailable 
+            ? 'Nombre de usuario disponible' 
+            : 'Nombre de usuario no disponible';
+        _checkingUsername = false;
       });
     } catch (e) {
       setState(() {
         _usernameAvailable = false;
-        _usernameChecked = true;
-        _isValidatingUsername = false;
+        _usernameMessage = 'Error verificando disponibilidad';
+        _checkingUsername = false;
       });
     }
   }
 
-  Future<void> _checkEmailAvailability() async {
-    final email = _emailController.text;
-    if (!email.contains('@')) return;
+  Future<void> _checkEmailAvailability(String email) async {
+    if (email.isEmpty || !_isValidEmail(email)) {
+      setState(() {
+        _emailAvailable = null;
+        _emailMessage = '';
+      });
+      return;
+    }
 
     setState(() {
-      _isValidatingEmail = true;
-      _emailChecked = false;
+      _checkingEmail = true;
+      _emailMessage = 'Verificando disponibilidad...';
     });
 
     try {
-      final response = await _authService.checkEmailAvailability(email);
+      // ✅ EL MÉTODO RETORNA bool DIRECTAMENTE
+      final isAvailable = await _authService.checkEmailAvailability(email);
+      
       setState(() {
-        _emailAvailable = response['available'] ?? false;
-        _emailChecked = true;
-        _isValidatingEmail = false;
+        _emailAvailable = isAvailable;
+        _emailMessage = isAvailable 
+            ? 'Email disponible' 
+            : 'Email no disponible o temporal';
+        _checkingEmail = false;
       });
     } catch (e) {
       setState(() {
         _emailAvailable = false;
-        _emailChecked = true;
-        _isValidatingEmail = false;
+        _emailMessage = 'Error verificando disponibilidad';
+        _checkingEmail = false;
       });
     }
   }
 
   bool _canRegister() {
     return !_isLoading && 
-           _usernameAvailable && 
-           _emailAvailable && 
+           _usernameAvailable == true && 
+           _emailAvailable == true && 
            _usernameChecked && 
            _emailChecked;
   }
@@ -393,6 +425,10 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
+  bool _isValidEmail(String email) {
+    return RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email);
+  }
+
   @override
   void dispose() {
     _usernameDebouncer?.cancel();
@@ -401,6 +437,11 @@ class _RegisterPageState extends State<RegisterPage> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    
+    // ✅ AGREGAR ESTOS
+    _usernameTimer?.cancel();
+    _emailTimer?.cancel();
+    
     super.dispose();
   }
 }

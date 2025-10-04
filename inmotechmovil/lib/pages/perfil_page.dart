@@ -219,14 +219,24 @@ class _PerfilPageState extends State<PerfilPage> {
 
     if (confirmar == true) {
       try {
-        final result = await _authService.logout();
-        if (result['success'] && mounted) {
+        // ✅ CORRIGIDO: logout() retorna void, no un Map
+        await _authService.logout();
+        
+        // ✅ Si llegamos aquí, el logout fue exitoso
+        if (mounted) {
           Navigator.pushReplacementNamed(context, '/login');
         }
       } catch (e) {
         print('Error al cerrar sesión: $e');
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.clear();
+        
+        // ✅ FALLBACK: Limpiar SharedPreferences manualmente si falla
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.clear();
+        } catch (clearError) {
+          print('Error limpiando SharedPreferences: $clearError');
+        }
+        
         if (mounted) {
           Navigator.pushReplacementNamed(context, '/login');
         }
