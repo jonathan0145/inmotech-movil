@@ -101,7 +101,8 @@ class InmuebleService {
     }
   }
 
-  // ✅ OBTENER INMUEBLES FAVORITOS DEL USUARIO
+  // ✅ AGREGAR ESTOS MÉTODOS AL FINAL
+  // FAVORITOS - igual al servicio web
   Future<List<Map<String, dynamic>>> getFavoritosByUserId(int userId) async {
     try {
       print('❤️ Obteniendo favoritos del usuario: $userId');
@@ -111,11 +112,11 @@ class InmuebleService {
       print('❤️ Response status: ${response.statusCode}');
       print('❤️ Response data: ${response.data}');
       
-      if (response.data is List) {
-        final List<dynamic> favoritos = response.data;
-        return favoritos.map((favorito) => Map<String, dynamic>.from(favorito)).toList();
-      } else if (response.data is Map && response.data['data'] != null) {
+      if (response.data is Map && response.data['data'] != null) {
         final List<dynamic> favoritos = response.data['data'];
+        return favoritos.map((favorito) => Map<String, dynamic>.from(favorito)).toList();
+      } else if (response.data is List) {
+        final List<dynamic> favoritos = response.data;
         return favoritos.map((favorito) => Map<String, dynamic>.from(favorito)).toList();
       }
       
@@ -126,7 +127,6 @@ class InmuebleService {
     }
   }
 
-  // ✅ VERIFICAR SI ES FAVORITO
   Future<bool> esFavorito(int userId, int inmuebleId) async {
     try {
       final response = await _apiService.get('/favoritos/usuario/$userId/inmueble/$inmuebleId');
@@ -142,12 +142,11 @@ class InmuebleService {
     }
   }
 
-  // ✅ TOGGLE FAVORITO (usando PUT en lugar de PATCH)
   Future<bool> toggleFavorito(int userId, int inmuebleId) async {
     try {
       print('❤️ Toggle favorito: userId=$userId, inmuebleId=$inmuebleId');
       
-      // ✅ CAMBIAR PATCH POR PUT
+      // ✅ USAR PUT IGUAL AL SERVICIO WEB
       final response = await _apiService.put('/favoritos/usuario/$userId/inmueble/$inmuebleId/toggle');
       
       if (response.data is Map) {
