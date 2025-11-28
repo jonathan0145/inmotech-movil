@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'pages/main_navigation.dart';
+import 'pages/login_page.dart';
+import 'pages/register_page.dart';
+import 'pages/dashboard_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -16,7 +18,12 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         fontFamily: 'Roboto',
       ),
-      home: MainNavigation(),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => LoginPage(),
+        '/register': (context) => RegisterPage(),
+        '/dashboard': (context) => DashboardPage(),
+      },
       debugShowCheckedModeBanner: false,
     );
   }

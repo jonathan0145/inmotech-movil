@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inmotechmovil/pages/auth/login.dart';
-import 'package:inmotechmovil/pages/auth/register.dart';
+import 'package:inmotechmovil/pages/login_page.dart';
+import 'package:inmotechmovil/pages/register_page.dart';
 import 'package:inmotechmovil/models/inmueble.dart';
 
 void main() {
@@ -10,7 +10,7 @@ void main() {
     // Build the LoginPage widget directly
     await tester.pumpWidget(
       MaterialApp(
-        home: const LoginPage(),
+        home: LoginPage(),
       ),
     );
 
@@ -25,7 +25,7 @@ void main() {
     // Build the RegisterPage widget directly
     await tester.pumpWidget(
       MaterialApp(
-        home: const RegisterPage(),
+        home: RegisterPage(),
       ),
     );
 
@@ -39,9 +39,9 @@ void main() {
   testWidgets('LoginPage navigation test', (WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        home: const LoginPage(),
+        home: LoginPage(),
         routes: {
-          '/register': (context) => const Scaffold(body: Text('Register Page')),
+          '/register': (context) => Scaffold(body: Text('Register Page')),
         },
       ),
     );
